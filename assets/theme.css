@@ -1,0 +1,263 @@
+/* ── CSS Custom Properties ───────────────────────────────────────────────── */
+:root {
+  --bg:      #F0F2F6;
+  --card:    #FFFFFF;
+  --text:    #2C3E50;
+  --muted:   #7F8C8D;
+  --border:  #DEE2E6;
+  --primary: #1A3C6E;
+  --grid:    #EEF0F2;
+  --stripe:  #F8F9FA;
+  --input-bg:#FFFFFF;
+}
+
+.dark-mode {
+  --bg:      #0D1117;
+  --card:    #161B22;
+  --text:    #C9D1D9;
+  --muted:   #8B949E;
+  --border:  #30363D;
+  --primary: #58A6FF;
+  --grid:    #21262D;
+  --stripe:  #1C2128;
+  --input-bg:#1C2128;
+}
+
+/* ── Root & layout ───────────────────────────────────────────────────────── */
+#root-container {
+  background: var(--bg) !important;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── Theme toggle button ─────────────────────────────────────────────────── */
+#theme-toggle {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  background: var(--card) !important;
+}
+
+/* ── Nav bar ─────────────────────────────────────────────────────────────── */
+.dark-mode .app-navbar {
+  box-shadow: 0 1px 6px rgba(0,0,0,.35) !important;
+}
+
+.dark-mode .nav-link-inactive {
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.dark-mode .nav-link-active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+/* ── General text cascade — covers all common text elements ──────────────── */
+/* h3 intentionally excluded from !important so explicit colour props (red/blue
+   category KPIs) keep their inline values; neutral KPIs use var(--text)
+   in Python directly, so they resolve correctly without !important. */
+.dark-mode p,
+.dark-mode span,
+.dark-mode label,
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6 {
+  color: var(--text);
+}
+
+/* Button text (Reset, etc.) */
+.dark-mode button:not(#theme-toggle):not([style*="background:#"]):not([style*="background: #"]) {
+  color: #fff;
+}
+
+/* HR dividers */
+.dark-mode hr {
+  border-color: var(--border) !important;
+}
+
+/* ── Plotly chart SVG overrides ──────────────────────────────────────────── */
+.dark-mode .js-plotly-plot .xtick text,
+.dark-mode .js-plotly-plot .ytick text {
+  fill: var(--text) !important;
+}
+
+.dark-mode .js-plotly-plot .gtitle {
+  fill: var(--text) !important;
+}
+
+.dark-mode .js-plotly-plot .legend text {
+  fill: var(--text) !important;
+}
+
+.dark-mode .js-plotly-plot .legend .bg {
+  fill: var(--card) !important;
+  fill-opacity: 0.88 !important;
+}
+
+.dark-mode .js-plotly-plot .gridlayer path {
+  stroke: var(--grid) !important;
+}
+
+.dark-mode .js-plotly-plot .zerolinelayer path {
+  stroke: var(--border) !important;
+}
+
+.dark-mode .js-plotly-plot .cbaxis text {
+  fill: var(--text) !important;
+}
+
+/* ── Dash Dropdown ───────────────────────────────────────────────────────── */
+/* Control box */
+.dark-mode .Select-control {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Everything inside the control (value text, placeholder, arrow) */
+.dark-mode .Select-control * {
+  color: var(--text) !important;
+  background-color: transparent !important;
+}
+
+/* Placeholder */
+.dark-mode .Select-placeholder {
+  color: var(--muted) !important;
+}
+
+/* Typed search input inside the control */
+.dark-mode .Select input {
+  color: var(--text) !important;
+  background: transparent !important;
+  caret-color: var(--text) !important;
+}
+
+/* Dropdown arrow */
+.dark-mode .Select-arrow {
+  border-top-color: var(--muted) !important;
+}
+
+/* ── Dropdown menu panel + ALL text inside it ────────────────────────────── */
+/* Dash uses VirtualizedSelectOption for scrollable lists (the common case)
+   and Select-option for short non-virtualised lists.  Target both plus a
+   broad descendant rule so no class-name variation slips through.          */
+.dark-mode .Select-menu-outer {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5) !important;
+  color: var(--text) !important;          /* cascade to all children        */
+}
+
+/* Every element inside the open menu — belt-and-braces */
+.dark-mode .Select-menu-outer *,
+.dark-mode .Select-menu * {
+  color: var(--text) !important;
+  background-color: transparent !important;
+}
+
+/* Virtualised option row (react-virtualized-select) */
+.dark-mode .VirtualizedSelectOption {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
+
+.dark-mode .VirtualizedSelectFocusedOption {
+  background-color: var(--grid) !important;
+  color: var(--text) !important;
+}
+
+.dark-mode .VirtualizedSelectSelectedOption {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+}
+
+.dark-mode .VirtualizedSelectDisabledOption {
+  color: var(--muted) !important;
+}
+
+/* Non-virtualised option row */
+.dark-mode .Select-option {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
+
+.dark-mode .Select-option.is-focused,
+.dark-mode .Select-option:hover {
+  background-color: var(--grid) !important;
+  color: var(--text) !important;
+}
+
+.dark-mode .Select-option.is-selected {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+}
+
+/* Multi-select tags */
+.dark-mode .Select-multi-value-wrapper .Select-value {
+  background-color: var(--grid) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.dark-mode .Select-multi-value-wrapper .Select-value-label {
+  color: var(--text) !important;
+}
+
+.dark-mode .Select-multi-value-wrapper .Select-value-icon {
+  border-right-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* ── RangeSlider ─────────────────────────────────────────────────────────── */
+.dark-mode .rc-slider-rail {
+  background-color: var(--border) !important;
+}
+
+.dark-mode .rc-slider-mark-text {
+  color: var(--muted) !important;
+}
+
+.dark-mode .rc-slider-dot {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+}
+
+/* ── Dash DataTable ──────────────────────────────────────────────────────── */
+.dark-mode .dash-table-container .dash-spreadsheet-container,
+.dark-mode .dash-table-container .dash-spreadsheet {
+  background: var(--card) !important;
+}
+
+.dark-mode .dash-table-container td.dash-cell {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.dark-mode .dash-table-container tr:nth-child(odd) td.dash-cell {
+  background-color: var(--stripe) !important;
+}
+
+.dark-mode .dash-table-container th.dash-header {
+  color: #fff !important;
+  border-color: var(--border) !important;
+}
+
+.dark-mode .dash-table-container .previous-page,
+.dark-mode .dash-table-container .next-page,
+.dark-mode .dash-table-container .last-page,
+.dark-mode .dash-table-container .first-page {
+  color: var(--text) !important;
+}
+
+/* ── dcc.Loading spinner ─────────────────────────────────────────────────── */
+.dark-mode ._dash-loading-callback {
+  color: var(--text) !important;
+}
+
+/* ── Checklist / RadioItems ──────────────────────────────────────────────── */
+.dark-mode .dash-checklist label,
+.dark-mode .dash-radio-items label {
+  color: var(--text) !important;
+}

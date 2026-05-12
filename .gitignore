@@ -1,0 +1,56 @@
+# ── Data files ────────────────────────────────────────────────────────────────
+*.csv
+*.xlsx
+*.xls
+
+# ── HTML outputs ──────────────────────────────────────────────────────────────
+*.html
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Sensitive / secrets ───────────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+secrets/
+credentials/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+env/
+.venv/
+geo_env/
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ── Claude / AI assistant state ───────────────────────────────────────────────
+.claude/
+.zencoder/
+.zenflow/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Large geo-base data (contains files > 100 MB — use Git LFS if needed) ────
+nairobi_geo_basedata/
+
+# ── Build / dist ──────────────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
