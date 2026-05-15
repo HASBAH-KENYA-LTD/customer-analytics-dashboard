@@ -1,6 +1,10 @@
 """
 pages/shptest.py — Raw shapefile inspection page (/shptest).
 Shows the Boroughs shapefile polygons directly with all its fields as filters.
+
+Exports:
+  shptest_layout  — full layout including the multi-page navbar (used by dashboard.py)
+  shptest_body    — filters + map only, no navbar (used by shptest_app.py)
 """
 
 from dash import dcc, html
@@ -19,8 +23,8 @@ _COLOR_OPTS = [
     {"label": " Division",     "value": "Division"},
 ]
 
-shptest_layout = html.Div([
-    navbar("/shptest"),
+# ── Reusable body (filters + map) — no navbar ─────────────────────────────────
+shptest_body = html.Div([
 
     # ── Filter bar ────────────────────────────────────────────────────────────
     html.Div(style={**CARD_S, "display":"flex", "gap":"20px", "alignItems":"flex-end",
@@ -78,7 +82,7 @@ shptest_layout = html.Div([
             dcc.RadioItems(
                 id="sht-colorby",
                 options=_COLOR_OPTS,
-                value="Borough",
+                value="Served By",
                 inline=True,
                 labelStyle={"marginRight":"12px","fontSize":"12px"},
                 inputStyle={"marginRight":"4px"},
@@ -90,7 +94,7 @@ shptest_layout = html.Div([
             dcc.RadioItems(
                 id="sht-mapstyle",
                 options=MAP_STYLE_OPTS,
-                value="open-street-map",
+                value="carto-positron",
                 inline=True,
                 labelStyle={"marginRight":"10px","fontSize":"12px"},
                 inputStyle={"marginRight":"4px"},
@@ -102,7 +106,7 @@ shptest_layout = html.Div([
             html.Div(style={"width":"150px"}, children=[
                 dcc.Slider(
                     id="sht-opacity",
-                    min=0.10, max=1.0, step=0.05, value=0.70,
+                    min=0.10, max=1.0, step=0.05, value=0.50,
                     marks={0.1:"10%", 0.5:"50%", 1.0:"100%"},
                     tooltip={"placement":"bottom","always_visible":False},
                 ),
@@ -122,7 +126,7 @@ shptest_layout = html.Div([
 
     # ── Info banner ───────────────────────────────────────────────────────────
     html.Div(
-        "Raw shapefile view — polygons are dissolved at SLNAME level (one polygon per sublocation). "
+        "Borough shapefile — one polygon per sublocation/distributor assignment. "
         "Hover for attributes. Use filters to inspect subsets.",
         style={"fontSize":"12px","color":"var(--muted)","marginBottom":"10px",
                "padding":"8px 12px","background":"#F8F9FA",
@@ -138,4 +142,10 @@ shptest_layout = html.Div([
                               "modeBarButtonsToRemove":["select2d","lasso2d"]}),
         ]),
     ]),
+])
+
+# ── Full layout with multi-page navbar (used by dashboard.py) ─────────────────
+shptest_layout = html.Div([
+    navbar("/shptest"),
+    shptest_body,
 ])
