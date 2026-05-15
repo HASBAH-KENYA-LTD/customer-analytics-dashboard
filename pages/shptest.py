@@ -113,25 +113,92 @@ shptest_body = html.Div([
             ]),
         ]),
 
-        html.Div(style={"marginLeft":"auto"}, children=[
-            html.P(id="sht-count",
-                   style={"fontSize":"11px","color":"var(--muted)","textAlign":"right",
-                          "marginBottom":"4px"}),
-            html.Button("Reset", id="sht-reset",
-                        style={"padding":"7px 20px","background":PRIMARY,
-                               "color":"#fff","border":"none","borderRadius":"6px",
-                               "cursor":"pointer","fontSize":"13px","fontWeight":"600"}),
+        html.Div(style={"marginLeft":"auto","display":"flex","gap":"8px","alignItems":"flex-end"}, children=[
+            html.Div([
+                html.P(id="sht-count",
+                       style={"fontSize":"11px","color":"var(--muted)","textAlign":"right",
+                              "marginBottom":"4px"}),
+                html.Div(style={"display":"flex","gap":"8px"}, children=[
+                    html.Button("?", id="sht-help-btn",
+                                title="How to use",
+                                style={"padding":"7px 13px","background":"#fff",
+                                       "color":PRIMARY,"border":f"1px solid {PRIMARY}",
+                                       "borderRadius":"6px","cursor":"pointer",
+                                       "fontSize":"14px","fontWeight":"700"}),
+                    html.Button("Reset", id="sht-reset",
+                                style={"padding":"7px 20px","background":PRIMARY,
+                                       "color":"#fff","border":"none","borderRadius":"6px",
+                                       "cursor":"pointer","fontSize":"13px","fontWeight":"600"}),
+                ]),
+            ]),
         ]),
     ]),
 
-    # ── Info banner ───────────────────────────────────────────────────────────
-    html.Div(
-        "Borough shapefile — one polygon per sublocation/distributor assignment. "
-        "Hover for attributes. Use filters to inspect subsets.",
-        style={"fontSize":"12px","color":"var(--muted)","marginBottom":"10px",
-               "padding":"8px 12px","background":"#F8F9FA",
-               "borderRadius":"6px","borderLeft":"3px solid var(--primary)"},
-    ),
+    # ── Help panel (hidden by default) ────────────────────────────────────────
+    html.Div(id="sht-help-panel", style={"display":"none"}, children=[
+        html.Div(style={
+            "background":"#EBF5FB","border":"1px solid #AED6F1",
+            "borderRadius":"8px","padding":"16px 20px","marginBottom":"12px",
+        }, children=[
+            html.Div(style={"display":"flex","justifyContent":"space-between",
+                            "alignItems":"center","marginBottom":"12px"}, children=[
+                html.Strong("How to use this map",
+                            style={"fontSize":"14px","color":"#1A5276"}),
+                html.Button("✕", id="sht-help-close",
+                            style={"background":"none","border":"none","fontSize":"16px",
+                                   "cursor":"pointer","color":"#666","padding":"0 4px"}),
+            ]),
+            html.Div(style={"display":"grid","gridTemplateColumns":"1fr 1fr",
+                            "gap":"12px 32px","fontSize":"13px","color":"#2C3E50"}, children=[
+                html.Div([
+                    html.Strong("Filters (Borough / County / Served By / Division)"),
+                    html.P("Select one or more values to narrow the map. "
+                           "The view automatically zooms to the filtered polygons. "
+                           "Leave all blank to see the full coverage area.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Colour by"),
+                    html.P("Switch the fill colour between Borough, Served By, County, "
+                           "or Division. The legend updates automatically.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Opacity slider"),
+                    html.P("Drag left to make polygons more transparent so you can see "
+                           "roads and place names on the basemap beneath.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Customer dots"),
+                    html.P("Overlay mapped customers coloured by sales category "
+                           "or rep category. Only customers inside the current "
+                           "borough/county filter are shown.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Map layer"),
+                    html.P("Light (Carto) is cleanest for print. "
+                           "Street map shows roads. Satellite shows aerial imagery.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Hover & zoom"),
+                    html.P("Hover any polygon to see sublocation name, borough, county, "
+                           "division, distributor, and household count. "
+                           "Scroll to zoom, drag to pan.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Dark / light mode  ☀️ 🌙"),
+                    html.P("Click the floating button in the bottom-right corner "
+                           "to switch between dark and light backgrounds. "
+                           "Dark mode is the default.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+            ]),
+        ]),
+    ]),
 
     # ── Map ───────────────────────────────────────────────────────────────────
     html.Div(style={**CARD_S,"padding":"6px"}, children=[

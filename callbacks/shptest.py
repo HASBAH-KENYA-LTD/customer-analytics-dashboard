@@ -36,6 +36,21 @@ _PALETTE = [
 
 
 @callback(
+    Output("sht-help-panel", "style"),
+    Input("sht-help-btn",   "n_clicks"),
+    Input("sht-help-close", "n_clicks"),
+    prevent_initial_call=True,
+)
+def sht_toggle_help(open_clicks, close_clicks):
+    from dash import ctx
+    if ctx.triggered_id == "sht-help-close":
+        return {"display": "none"}
+    # open button: odd clicks = show, even = hide
+    n = open_clicks or 0
+    return {"display": "block"} if n % 2 == 1 else {"display": "none"}
+
+
+@callback(
     Output("sht-borough",  "value"),
     Output("sht-county",   "value"),
     Output("sht-servedby", "value"),

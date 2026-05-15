@@ -8,17 +8,21 @@ Dev:
     python shptest_app.py
 
 Production (gunicorn):
-    gunicorn shptest_app:server -w 1 -b 0.0.0.0:8051 --timeout 120
+    gunicorn shptest_app:server -w 1 -b 127.0.0.1:8051 --timeout 120 --access-logfile -
 """
 
 import warnings
 warnings.filterwarnings("ignore", message="Geometry is in a geographic CRS")
 
-from dash import Dash, html
+from dash import (
+    Dash, html, dcc,
+    Input, Output, State,
+    callback, clientside_callback,
+)
 
-import data            # loads customer data (needed for customer-dot overlay)
-import shp_data        # loads borough shapefile
-import callbacks.shptest   # registers all sht_* @callback decorators
+import data                 # loads customer data (needed for customer-dot overlay)
+import shp_data             # loads borough shapefile
+import callbacks.shptest    # registers all sht_* @callback decorators
 
 from pages.shptest import shptest_body
 from config import PRIMARY
@@ -28,14 +32,17 @@ app = Dash(
     title="Borough Map",
     suppress_callback_exceptions=True,
 )
-server = app.server   # expose WSGI entry point for gunicorn
+server = app.server   # WSGI entry point for gunicorn
 
 app.layout = html.Div(
     id="root-container",
+    className="dark-mode",   # default: dark
     style={"fontFamily": "'Segoe UI',Arial,sans-serif",
            "minHeight": "100vh", "padding": "14px"},
     children=[
-        # Minimal branded header — no links to other pages
+        dcc.Store(id="theme-store", data="dark"),
+
+        # ── Minimal branded header ────────────────────────────────────────────
         html.Div(
             style={
                 "display": "flex", "alignItems": "center",
@@ -50,9 +57,56 @@ app.layout = html.Div(
                 ),
             ],
         ),
+
         shptest_body,
+
+        # ── Floating dark / light toggle ──────────────────────────────────────
+        html.Button(
+            id="theme-toggle",
+            children="☀️",          # sun = currently dark, click for light
+            title="Toggle dark / light mode",
+            style={
+                "position": "fixed", "bottom": "22px", "right": "22px",
+                "zIndex": "9999", "fontSize": "20px",
+                "padding": "6px 12px", "borderRadius": "50px",
+                "border": "1px solid var(--border)",
+                "background": "var(--card)", "color": "var(--text)",
+                "cursor": "pointer",
+                "boxShadow": "0 2px 8px rgba(0,0,0,.20)",
+                "transition": "all 0.2s ease",
+            },
+        ),
     ],
 )
+
+
+@callback(
+    Output("theme-store",  "data"),
+    Output("theme-toggle", "children"),
+    Input("theme-toggle",  "n_clicks"),
+    State("theme-store",   "data"),
+    prevent_initial_call=True,
+)
+def toggle_theme(_, current):
+    if current == "dark":
+        return "light", "🌙"
+    return "dark", "☀️"
+
+
+# Apply / remove dark-mode class via JS — avoids re-rendering chart callbacks
+clientside_callback(
+    """function(theme) {
+        const el = document.getElementById('root-container');
+        if (el) {
+            if (theme === 'dark') el.classList.add('dark-mode');
+            else                  el.classList.remove('dark-mode');
+        }
+        return window.dash_clientside.no_update;
+    }""",
+    Output("theme-store", "id"),   # dummy output — store.id never changes
+    Input("theme-store",  "data"),
+)
+
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8051)
