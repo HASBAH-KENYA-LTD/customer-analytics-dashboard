@@ -31,7 +31,7 @@ shptest_body = html.Div([
                     "flexWrap":"wrap", "marginBottom":"12px",
                     "padding":"10px 16px"}, children=[
 
-        html.Div([
+        html.Div(className="sht-filter-drop", children=[
             html.P("Borough", style={**LBL_S,"marginBottom":"2px"}),
             dcc.Dropdown(id="sht-borough", options=SHP_BOROUGH_OPTIONS, multi=True,
                          placeholder="All boroughs",
@@ -39,7 +39,7 @@ shptest_body = html.Div([
                          maxHeight=200),
         ]),
 
-        html.Div([
+        html.Div(className="sht-filter-drop", children=[
             html.P("County", style={**LBL_S,"marginBottom":"2px"}),
             dcc.Dropdown(id="sht-county", options=SHP_COUNTY_OPTIONS, multi=True,
                          placeholder="All counties",
@@ -47,7 +47,7 @@ shptest_body = html.Div([
                          maxHeight=200),
         ]),
 
-        html.Div([
+        html.Div(className="sht-filter-drop", children=[
             html.P("Served By", style={**LBL_S,"marginBottom":"2px"}),
             dcc.Dropdown(id="sht-servedby", options=SHP_SERVED_BY_OPTIONS, multi=True,
                          placeholder="All distributors",
@@ -55,7 +55,7 @@ shptest_body = html.Div([
                          maxHeight=200),
         ]),
 
-        html.Div([
+        html.Div(className="sht-filter-drop", children=[
             html.P("Division", style={**LBL_S,"marginBottom":"2px"}),
             dcc.Dropdown(id="sht-division", options=SHP_DIVISION_OPTIONS, multi=True,
                          placeholder="All divisions",
@@ -148,7 +148,8 @@ shptest_body = html.Div([
                             style={"background":"none","border":"none","fontSize":"16px",
                                    "cursor":"pointer","color":"#666","padding":"0 4px"}),
             ]),
-            html.Div(style={"display":"grid","gridTemplateColumns":"1fr 1fr",
+            html.Div(className="sht-help-grid",
+                     style={"display":"grid","gridTemplateColumns":"1fr 1fr",
                             "gap":"12px 32px","fontSize":"13px","color":"#2C3E50"}, children=[
                 html.Div([
                     html.Strong("Filters (Borough / County / Served By / Division)"),

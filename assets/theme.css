@@ -261,3 +261,49 @@
 .dark-mode .dash-radio-items label {
   color: var(--text) !important;
 }
+
+/* ── Responsive / mobile ─────────────────────────────────────────────────── */
+
+/* Tablet (≤ 900px): stretch filter dropdowns to fill available space */
+@media (max-width: 900px) {
+  .sht-filter-drop {
+    flex: 1 1 140px;
+  }
+  .sht-filter-drop .Select-control,
+  .sht-filter-drop .dash-dropdown {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Phone (≤ 600px): single-column layout for help panel + smaller legend */
+@media (max-width: 600px) {
+
+  /* Help panel → 1 column */
+  .sht-help-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Map modebar (toolbar) — scale down so it doesn't overlap map */
+  .js-plotly-plot .modebar-container {
+    transform: scale(0.78);
+    transform-origin: top right;
+  }
+
+  /* Map legend — scale down so it doesn't cover most of the map.
+     Plotly renders the legend as an SVG <g>; transform works on SVG elements. */
+  .js-plotly-plot .legend {
+    transform: scale(0.70);
+    transform-origin: top right;
+  }
+
+  /* Prevent horizontal scroll from fixed-width filter items */
+  #root-container {
+    overflow-x: hidden;
+  }
+
+  /* Opacity slider — full width on phone */
+  .rc-slider {
+    width: 100% !important;
+  }
+}
