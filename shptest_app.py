@@ -14,11 +14,22 @@ Production (gunicorn):
 import warnings
 warnings.filterwarnings("ignore", message="Geometry is in a geographic CRS")
 
+# ── Logging must be configured FIRST so all subsequent imports inherit it ─────
+import logging_setup                                    # noqa: F401 (side-effects only)
+from logging_setup import app_log, audit_log, error_log
+
+import time
+import traceback
+from flask import request, g
+
 from dash import (
     Dash, html, dcc,
     Input, Output, State,
     callback, clientside_callback,
 )
+from flask_compress import Compress
+
+app_log.info("Starting shptest_app — importing data modules…")
 
 import data                 # loads customer data (needed for customer-dot overlay)
 import shp_data             # loads borough shapefile
@@ -32,17 +43,54 @@ app = Dash(
     title="Borough Map",
     suppress_callback_exceptions=True,
 )
-server = app.server   # WSGI entry point for gunicorn
+server = app.server
+Compress(server)      # gzip — reduces JS bundle transfer by ~70%
 
+
+# ── Flask request hooks ───────────────────────────────────────────────────────
+
+@server.before_request
+def _before():
+    g.t0 = time.perf_counter()
+
+
+@server.after_request
+def _after(response):
+    ms  = (time.perf_counter() - g.t0) * 1000
+    ip  = request.headers.get("X-Forwarded-For", request.remote_addr)
+    ua  = request.headers.get("User-Agent", "-")[:80]
+    audit_log.info(
+        "%-16s %-4s %-40s %s  %dms  %s",
+        ip, request.method, request.path,
+        response.status_code, ms, ua,
+    )
+    if response.status_code >= 500:
+        error_log.error(
+            "5xx on %s %s → %s  (%.0f ms)",
+            request.method, request.path, response.status_code, ms,
+        )
+    return response
+
+
+@server.teardown_request
+def _teardown(exc):
+    if exc is not None:
+        error_log.error(
+            "Unhandled exception on %s %s\n%s",
+            request.method, request.path,
+            traceback.format_exc(),
+        )
+
+
+# ── Layout ────────────────────────────────────────────────────────────────────
 app.layout = html.Div(
     id="root-container",
-    className="dark-mode",   # default: dark
+    className="dark-mode",
     style={"fontFamily": "'Segoe UI',Arial,sans-serif",
            "minHeight": "100vh", "padding": "14px"},
     children=[
         dcc.Store(id="theme-store", data="dark"),
 
-        # ── Minimal branded header ────────────────────────────────────────────
         html.Div(
             style={
                 "display": "flex", "alignItems": "center",
@@ -60,10 +108,9 @@ app.layout = html.Div(
 
         shptest_body,
 
-        # ── Floating dark / light toggle ──────────────────────────────────────
         html.Button(
             id="theme-toggle",
-            children="☀️",          # sun = currently dark, click for light
+            children="☀️",
             title="Toggle dark / light mode",
             style={
                 "position": "fixed", "bottom": "22px", "right": "22px",
@@ -93,7 +140,6 @@ def toggle_theme(_, current):
     return "dark", "☀️"
 
 
-# Apply / remove dark-mode class via JS — avoids re-rendering chart callbacks
 clientside_callback(
     """function(theme) {
         const el = document.getElementById('root-container');
@@ -103,10 +149,11 @@ clientside_callback(
         }
         return window.dash_clientside.no_update;
     }""",
-    Output("theme-store", "id"),   # dummy output — store.id never changes
+    Output("theme-store", "id"),
     Input("theme-store",  "data"),
 )
 
+app_log.info("shptest_app ready — layout built, callbacks registered")
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8051)

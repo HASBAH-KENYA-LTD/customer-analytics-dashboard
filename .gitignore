@@ -54,3 +54,7 @@ nairobi_geo_basedata/
 dist/
 build/
 *.egg-info/
+
+#--- cagching--
+.cache_*
+

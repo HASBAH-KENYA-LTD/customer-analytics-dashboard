@@ -3,6 +3,7 @@ callbacks/shptest.py — sht_* callbacks for the raw shapefile test page (/shpte
 """
 
 import math
+import logging
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import callback, Input, Output, State
@@ -10,6 +11,9 @@ from dash import callback, Input, Output, State
 from config import BORDER, TEXT, CAT_COLORS, REP_CAT_COLORS, TOTAL_COL
 from data import df
 from shp_data import SHP_SL_GDF, SHP_GJ
+
+_log       = logging.getLogger("shptest.app")
+_audit_log = logging.getLogger("shptest.audit")
 
 
 # Colorblind-friendly palette (Okabe-Ito 8 + Paul Tol's qualitative 9)
@@ -87,6 +91,11 @@ def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dot
         gdf = gdf[gdf["Served By"].isin(served_by)]
     if divisions:
         gdf = gdf[gdf["Division"].isin(divisions)]
+
+    _audit_log.info(
+        "MAP_FILTER borough=%s county=%s served_by=%s division=%s colorby=%s dots=%s → %d polygons",
+        boroughs, counties, served_by, divisions, colorby, dots, len(gdf),
+    )
 
     if gdf.empty:
         empty = go.Figure()
