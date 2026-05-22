@@ -14,6 +14,11 @@ from shp_data import (
     SHP_BOROUGH_OPTIONS, SHP_COUNTY_OPTIONS,
     SHP_SERVED_BY_OPTIONS, SHP_DIVISION_OPTIONS,
 )
+
+_VERSION_OPTS = [
+    {"label": " Current",  "value": "current"},
+    {"label": " Proposed", "value": "proposed"},
+]
 from ui import navbar
 
 _COLOR_OPTS = [
@@ -30,6 +35,19 @@ shptest_body = html.Div([
     html.Div(style={**CARD_S, "display":"flex", "gap":"20px", "alignItems":"flex-end",
                     "flexWrap":"wrap", "marginBottom":"12px",
                     "padding":"10px 16px"}, children=[
+
+        html.Div(style={"borderRight":"2px solid var(--border,#dee2e6)",
+                        "paddingRight":"20px","marginRight":"4px"}, children=[
+            html.P("Map version", style={**LBL_S,"marginBottom":"4px"}),
+            dcc.RadioItems(
+                id="sht-version",
+                options=_VERSION_OPTS,
+                value="current",
+                inline=True,
+                labelStyle={"marginRight":"10px","fontSize":"13px","fontWeight":"600"},
+                inputStyle={"marginRight":"4px"},
+            ),
+        ]),
 
         html.Div(className="sht-filter-drop", children=[
             html.P("Borough", style={**LBL_S,"marginBottom":"2px"}),
@@ -188,6 +206,13 @@ shptest_body = html.Div([
                     html.P("Hover any polygon to see sublocation name, borough, county, "
                            "division, distributor, and household count. "
                            "Scroll to zoom, drag to pan.",
+                           style={"margin":"4px 0 0","color":"#555"}),
+                ]),
+                html.Div([
+                    html.Strong("Map version"),
+                    html.P("Toggle between Current (original boundaries) and "
+                           "Proposed (updated boundaries). Hover the proposed map "
+                           "to see the previous distributor under 'Previous Served By'.",
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
                 html.Div([

@@ -10,7 +10,7 @@ from dash import callback, Input, Output, State
 
 from config import BORDER, TEXT, CAT_COLORS, REP_CAT_COLORS, TOTAL_COL
 from data import df
-from shp_data import SHP_SL_GDF, SHP_GJ
+from shp_data import SHP_SL_GDF_CURRENT, SHP_GJ_CURRENT, SHP_SL_GDF_PROPOSED, SHP_GJ_PROPOSED
 
 _log       = logging.getLogger("shptest.app")
 _audit_log = logging.getLogger("shptest.audit")
@@ -69,6 +69,7 @@ def sht_reset(_):
 @callback(
     Output("sht-map",   "figure"),
     Output("sht-count", "children"),
+    Input("sht-version",   "value"),
     Input("sht-borough",   "value"),
     Input("sht-county",    "value"),
     Input("sht-servedby",  "value"),
@@ -78,8 +79,15 @@ def sht_reset(_):
     Input("sht-dots",      "value"),
     Input("sht-opacity",   "value"),
 )
-def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dots, opacity):
-    gdf = SHP_SL_GDF.copy()
+def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_style, dots, opacity):
+    if version == "proposed":
+        src_gdf = SHP_SL_GDF_PROPOSED
+        shp_gj  = SHP_GJ_PROPOSED
+    else:
+        src_gdf = SHP_SL_GDF_CURRENT
+        shp_gj  = SHP_GJ_CURRENT
+
+    gdf = src_gdf.copy()
 
     # Apply filters (each filter uses the primary "Served By" field,
     # which is the first row's value per SLNAME — matching what's on the map)
@@ -93,8 +101,8 @@ def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dot
         gdf = gdf[gdf["Division"].isin(divisions)]
 
     _audit_log.info(
-        "MAP_FILTER borough=%s county=%s served_by=%s division=%s colorby=%s dots=%s → %d polygons",
-        boroughs, counties, served_by, divisions, colorby, dots, len(gdf),
+        "MAP_FILTER version=%s borough=%s county=%s served_by=%s division=%s colorby=%s dots=%s → %d polygons",
+        version, boroughs, counties, served_by, divisions, colorby, dots, len(gdf),
     )
 
     if gdf.empty:
@@ -122,33 +130,39 @@ def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dot
     cats = sorted(gdf[colorby].dropna().unique())
     color_map = {c: _PALETTE[i % len(_PALETTE)] for i, c in enumerate(cats)}
 
+    hover_data = {
+        "SLNAME":    True,
+        "Borough":   True,
+        "County":    True,
+        "Division":  True,
+        "Ward":      True,
+        "Served By": True,
+        "SUM_HOUSEH":True,
+        "SL_KEY":    False,
+    }
+    labels = {
+        "SLNAME":     "Sublocation",
+        "Borough":    "Borough",
+        "County":     "County",
+        "Division":   "Division",
+        "Ward":       "Ward",
+        "Served By":  "Served By",
+        "SUM_HOUSEH": "Households",
+    }
+    if "OldServed" in gdf.columns:
+        hover_data["OldServed"] = True
+        labels["OldServed"] = "Previous Served By"
+
     fig = px.choropleth_map(
         gdf,
-        geojson=SHP_GJ,
+        geojson=shp_gj,
         featureidkey="id",
         locations="SL_KEY",
         color=colorby,
         color_discrete_map=color_map,
         category_orders={colorby: cats},
-        hover_data={
-            "SLNAME":    True,
-            "Borough":   True,
-            "County":    True,
-            "Division":  True,
-            "Ward":      True,
-            "Served By": True,
-            "SUM_HOUSEH":True,
-            "SL_KEY":    False,
-        },
-        labels={
-            "SLNAME":     "Sublocation",
-            "Borough":    "Borough",
-            "County":     "County",
-            "Division":   "Division",
-            "Ward":       "Ward",
-            "Served By":  "Served By",
-            "SUM_HOUSEH": "Households",
-        },
+        hover_data=hover_data,
+        labels=labels,
         map_style=ms,
         opacity=opacity if opacity is not None else 0.70,
         zoom=zoom,
@@ -195,7 +209,7 @@ def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dot
             bordercolor=BORDER, borderwidth=1,
             itemsizing="constant",
         ),
-        uirevision=f"{boroughs}-{counties}-{served_by}-{divisions}",
+        uirevision=f"{version}-{boroughs}-{counties}-{served_by}-{divisions}",
     )
 
     return fig, f"{len(gdf):,} sublocations shown"
