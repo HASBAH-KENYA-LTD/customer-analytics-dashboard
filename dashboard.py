@@ -8,6 +8,7 @@ Pages:
   /boroughs       Borough (sublocation) choropleth
   /constituencies Constituency choropleth
   /coke           Coke vs HFS/SUBD customer map
+  /compete        Competitive intelligence – Coke vs Hasbah by region / county
 """
 
 import warnings
@@ -26,6 +27,7 @@ import pages.constituencies
 import pages.coke
 import pages.sublocations
 import pages.shptest
+import pages.compete
 import callbacks                   # __init__ imports all sub-modules, registering @callback decorators
 
 from pages.main           import main_layout
@@ -37,6 +39,7 @@ from pages.constituencies import constituencies_layout
 from pages.coke           import coke_layout
 from pages.sublocations   import sublocations_layout
 from pages.shptest        import shptest_layout
+from pages.compete        import compete_layout
 
 # ─────────────────────────────────────────────────────────────────────────────
 # APP INSTANCE
@@ -92,6 +95,8 @@ def route(path):
         return sublocations_layout
     if path == "/shptest":
         return shptest_layout
+    if path == "/compete":
+        return compete_layout
     return main_layout
 
 

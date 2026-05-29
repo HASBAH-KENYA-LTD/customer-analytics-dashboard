@@ -8,3 +8,4 @@ from callbacks import constituencies  # noqa: F401
 from callbacks import coke            # noqa: F401
 from callbacks import sublocations   # noqa: F401
 from callbacks import shptest        # noqa: F401
+from callbacks import compete        # noqa: F401

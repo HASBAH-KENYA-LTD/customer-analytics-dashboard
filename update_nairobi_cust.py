@@ -14,9 +14,9 @@ import geopandas as gpd
 import pandas as pd
 import shutil, os
 
-WORKBOOK = "nairobi_cust2.xlsx"
-SHEET    = "SUBD"
-OUTPUT   = "SUDS_nairobi_cust_updated.xlsx"
+WORKBOOK = "nairobi_cust.xlsx"
+SHEET    = "COMBINED"
+OUTPUT   = "VANS_nairobi_cust_updated.xlsx"
 # OUTPUT   = "nairobi_cust_updated.xlsx"
 
 # ── helpers ───────────────────────────────────────────────────────────────────

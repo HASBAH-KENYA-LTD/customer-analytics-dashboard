@@ -84,7 +84,7 @@ def m_update(counties, cats, repcats, colorby, map_style, show_coke):
         color=colorby,
         color_discrete_map=color_map,
         custom_data=["customer_id_PK","customer_name","category","rep_category",
-                     "COUNTY","DIVISION","WARD", TOTAL_COL],
+                     "sales_rep","COUNTY","DIVISION","WARD", TOTAL_COL],
         opacity=0.70,
         zoom=9 if not counties else 10,
         center={"lat": dm.LAT.median() if len(dm) else MAP_CENTER["lat"],
@@ -98,10 +98,11 @@ def m_update(counties, cats, repcats, colorby, map_style, show_coke):
             hovertemplate=(
                 "<b>%{customdata[0]}</b>  %{customdata[1]}<br>"
                 "Category: %{customdata[2]} · %{customdata[3]}<br>"
-                "County: %{customdata[4]}<br>"
-                "Division: %{customdata[5]}<br>"
-                "Ward: %{customdata[6]}<br>"
-                "Total Sales: KES %{customdata[7]:,.0f}<extra></extra>"
+                "%{customdata[4]}<br>"
+                "County: %{customdata[5]}<br>"
+                "Division: %{customdata[6]}<br>"
+                "Ward: %{customdata[7]}<br>"
+                "Total Sales: KES %{customdata[8]:,.0f}<extra></extra>"
             ),
         )
         map_fig.update_layout(

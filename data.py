@@ -24,7 +24,7 @@ from config import (
 
 _CACHE_PATH = ".cache_data.pkl"
 _SOURCES = [
-    "NAIROBI_CUSTOMERS_VANS_SUBD.xlsx",
+    "HASBAH_CUSTOMERS_SUBD_VANS.xlsx",
     "COKE_CUSTOMERS.xlsx",
     "Kenya_Wards/kenya_wards.shp",
     "ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp",
@@ -79,10 +79,27 @@ else:
     _t0 = time.perf_counter()
     _log.info("Data cache MISS — full processing started")
     _log.info("Loading customer Excel…")
-    _raw = pd.read_excel("NAIROBI_CUSTOMERS_VANS_SUBD.xlsx", sheet_name="COMBINED")
+    _raw = pd.read_excel("HASBAH_CUSTOMERS_SUBD_VANS.xlsx", sheet_name="COMBINED")
+
+    # Normalise column names to match the rest of the codebase
+    _raw = _raw.rename(columns={
+        "CUSTOMER_ID":    "customer_id",
+        "CUSTOMER_ID_PK": "customer_id_PK",
+        "CUSTOMER_NAME":  "customer_name",
+        "CATEGORY":       "category",
+        "REP_CATEGORY":   "rep_category",
+        "SALES_REP":      "sales_rep",
+    })
+    # Month headers arrive as datetime.datetime objects from Excel — convert to "January 2026" strings
+    import datetime as _dt
+    _raw = _raw.rename(columns={
+        c: c.strftime("%B %Y")
+        for c in _raw.columns if isinstance(c, _dt.datetime)
+    })
 
     _keep = ["customer_id", "customer_id_PK", "customer_name",
-             "category", "rep_category", "LAT", "LONG"] + MONTHS + [TOTAL_COL]
+             "category", "rep_category", "sales_rep", "REGION_NAME",
+             "LAT", "LONG"] + MONTHS + [TOTAL_COL]
     df = _raw[[c for c in _keep if c in _raw.columns]].copy()
     del _raw
 
@@ -286,7 +303,30 @@ else:
     df_coke["LONG"] = pd.to_numeric(df_coke["LONG"], errors="coerce")
     COKE_SEGMENTS = sorted(df_coke["SEGM"].dropna().unique())
     COKE_REGIONS  = sorted(df_coke["REGION"].dropna().unique())
-    _log.info("%d Coke customers | Nairobi %d", len(df_coke), (df_coke["REGION"]=="Nairobi").sum())
+
+    # Assign county to Coke customers via constituency spatial join.
+    # Pass only a geometry-only GDF (no extra columns) to avoid sjoin column conflicts.
+    _ck_mask  = df_coke["LAT"].notna() & df_coke["LONG"].notna()
+    _ck_idx   = df_coke.index[_ck_mask]
+    _ck_pts   = gpd.GeoDataFrame(
+        index=_ck_idx,
+        geometry=gpd.points_from_xy(
+            df_coke.loc[_ck_mask, "LONG"],
+            df_coke.loc[_ck_mask, "LAT"],
+        ),
+        crs="EPSG:4326",
+    )
+    _ck_joined = gpd.sjoin(_ck_pts, CONSTITUENCIES[["COUNTY_CONST", "geometry"]],
+                           how="left", predicate="within")
+    _ck_joined = _ck_joined[~_ck_joined.index.duplicated(keep="first")]
+    df_coke["COUNTY"] = _ck_joined["COUNTY_CONST"].str.title()
+    # Ensure column always exists even for rows that had no coordinates
+    if "COUNTY" not in df_coke.columns:
+        df_coke["COUNTY"] = None
+    del _ck_mask, _ck_idx, _ck_pts, _ck_joined
+    _log.info("%d Coke customers | Nairobi %d | county-assigned %d",
+              len(df_coke), (df_coke["REGION"]=="Nairobi").sum(),
+              df_coke["COUNTY"].notna().sum())
 
     # ─────────────────────────────────────────────────────────────────────────
     # SAVE CACHE

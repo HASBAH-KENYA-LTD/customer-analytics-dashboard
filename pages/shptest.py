@@ -14,12 +14,15 @@ from shp_data import (
     SHP_BOROUGH_OPTIONS, SHP_COUNTY_OPTIONS,
     SHP_SERVED_BY_OPTIONS, SHP_DIVISION_OPTIONS,
 )
+from ui import navbar, rep_option
+
+_all_rep_vals = [o["value"] for o in SHP_SERVED_BY_OPTIONS]
+_all_rep_opts = [rep_option(o["value"]) for o in SHP_SERVED_BY_OPTIONS]
 
 _VERSION_OPTS = [
     {"label": " Current",  "value": "current"},
     {"label": " Proposed", "value": "proposed"},
 ]
-from ui import navbar
 
 _COLOR_OPTS = [
     {"label": " Borough",      "value": "Borough"},
@@ -216,23 +219,74 @@ shptest_body = html.Div([
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
                 html.Div([
-                    html.Strong("Dark / light mode  ☀️ 🌙"),
-                    html.P("Click the floating button in the bottom-right corner "
-                           "to switch between dark and light backgrounds. "
-                           "Dark mode is the default.",
+                    html.Strong("Distributor filter (on map)"),
+                    html.P("The floating panel on the right of the map lets you pick "
+                           "Both / VAN / SUBD then deselect individual distributors. "
+                           "Blue ● = VAN routes, green ● = SUBD distributors.",
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
             ]),
         ]),
     ]),
 
-    # ── Map ───────────────────────────────────────────────────────────────────
-    html.Div(style={**CARD_S,"padding":"6px"}, children=[
+    # ── Map with floating distributor-filter panel ────────────────────────────
+    html.Div(style={**CARD_S, "padding":"6px", "position":"relative"}, children=[
+
         dcc.Loading(type="circle", children=[
             dcc.Graph(id="sht-map",
                       style={"height":"calc(100vh - 200px)", "minHeight":"600px"},
                       config={"scrollZoom":True,
                               "modeBarButtonsToRemove":["select2d","lasso2d"]}),
+        ]),
+
+        # Floating panel — overlaid on the map, right side, below the Plotly legend
+        html.Div(style={
+            "position":   "absolute",
+            "top":        "10px",
+            "right":      "10px",
+            "width":      "210px",
+            "zIndex":     "500",
+            "background": "rgba(255,255,255,0.93)",
+            "border":     "1px solid rgba(0,0,0,0.12)",
+            "borderRadius": "8px",
+            "padding":    "12px 12px 14px",
+            "boxShadow":  "0 2px 8px rgba(0,0,0,.14)",
+        }, children=[
+
+            html.P("Distributor Type",
+                   style={**LBL_S, "marginBottom":"6px",
+                          "fontWeight":"700", "fontSize":"11px",
+                          "textTransform":"uppercase", "letterSpacing":"0.04em"}),
+
+            dcc.RadioItems(
+                id="sht-type-grp",
+                options=[
+                    {"label": " Both", "value": "both"},
+                    {"label": " VAN",  "value": "VAN"},
+                    {"label": " SUBD", "value": "SUBD"},
+                ],
+                value="both",
+                inline=True,
+                labelStyle={"marginRight":"10px","fontSize":"12px","fontWeight":"600"},
+                inputStyle={"marginRight":"4px"},
+            ),
+
+            html.Hr(style={"margin":"8px 0","borderColor":"rgba(0,0,0,0.10)"}),
+
+            html.P("Select Distributors",
+                   style={**LBL_S, "marginBottom":"4px",
+                          "fontSize":"11px", "textTransform":"uppercase",
+                          "letterSpacing":"0.04em"}),
+
+            dcc.Dropdown(
+                id="sht-type-reps",
+                options=_all_rep_opts,
+                value=_all_rep_vals,
+                multi=True,
+                placeholder="Select distributors...",
+                style={**DROP_S, "marginBottom":0, "fontSize":"12px"},
+                maxHeight=400,
+            ),
         ]),
     ]),
 ])

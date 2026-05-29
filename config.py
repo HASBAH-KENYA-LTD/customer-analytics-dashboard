@@ -4,11 +4,10 @@ No local imports allowed here.
 """
 
 MONTHS = [
-    "December 2025",
     "January 2026", "February 2026", "March 2026", "April 2026",
 ]
-MONTH_SHORT = ["Dec 25", "Jan 26", "Feb 26", "Mar 26", "Apr 26"]
-TOTAL_COL   = "TOTAL "          # trailing space as in source file
+MONTH_SHORT = ["Jan 26", "Feb 26", "Mar 26", "Apr 26"]
+TOTAL_COL   = "Grand Total"
 
 CAT_COLORS = {"HFS": "#2980B9", "SUBD": "#E67E22"}
 OVERLAP_COLORS = {

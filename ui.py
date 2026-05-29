@@ -46,6 +46,19 @@ def fmt_kes(v):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DISTRIBUTOR OPTION HELPER
+# ─────────────────────────────────────────────────────────────────────────────
+
+def rep_option(rep):
+    """Dropdown option with a colored dot: blue for VAN types, green for SUBDs."""
+    color = "#1565C0" if "van" in rep.lower() else "#2E7D32"
+    return {"label": html.Span([
+        html.Span("●", style={"color": color, "marginRight": "5px", "fontSize": "13px"}),
+        rep,
+    ]), "value": rep}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # BAR CHART
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -105,6 +118,7 @@ def navbar(active="/"):
             nav_link("Sublocations",   "/sublocations"),
             nav_link("Constituencies", "/constituencies"),
             nav_link("Coke Map",       "/coke"),
+            nav_link("Compete",        "/compete"),
             nav_link("Shp Test",       "/shptest"),
         ]),
     ])

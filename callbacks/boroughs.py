@@ -105,7 +105,7 @@ def br_update(boroughs, counties, repcats, dots, map_style, show_coke, cats):
                     color=dots,
                     color_discrete_map=cmap,
                     custom_data=["customer_id_PK", "customer_name",
-                                 "category", "rep_category", "BOROUGH", TOTAL_COL],
+                                 "category", "rep_category", "sales_rep", "BOROUGH", TOTAL_COL],
                     opacity=0.75,
                     map_style=ms,
                 )
@@ -114,8 +114,9 @@ def br_update(boroughs, counties, repcats, dots, map_style, show_coke, cats):
                     hovertemplate=(
                         "<b>%{customdata[0]}</b>  %{customdata[1]}<br>"
                         "%{customdata[2]} · %{customdata[3]}<br>"
-                        "Borough: %{customdata[4]}<br>"
-                        "Sales: KES %{customdata[5]:,.0f}<extra></extra>"
+                        "%{customdata[4]}<br>"
+                        "Borough: %{customdata[5]}<br>"
+                        "Sales: KES %{customdata[6]:,.0f}<extra></extra>"
                     ),
                 )
                 for trace in scatter.data:

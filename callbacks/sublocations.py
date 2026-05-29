@@ -100,7 +100,7 @@ def sl_update(boroughs, counties, locations, repcats, dots, map_style, shapefile
                 color=dots,
                 color_discrete_map=cmap,
                 custom_data=["customer_id_PK", "customer_name",
-                             "category", "rep_category", "SUBLOCATION", TOTAL_COL],
+                             "category", "rep_category", "sales_rep", "SUBLOCATION", TOTAL_COL],
                 opacity=0.75,
                 map_style=ms,
             )
@@ -109,8 +109,9 @@ def sl_update(boroughs, counties, locations, repcats, dots, map_style, shapefile
                 hovertemplate=(
                     "<b>%{customdata[0]}</b>  %{customdata[1]}<br>"
                     "%{customdata[2]} · %{customdata[3]}<br>"
-                    "Sublocation: %{customdata[4]}<br>"
-                    "Sales: KES %{customdata[5]:,.0f}<extra></extra>"
+                    "%{customdata[4]}<br>"
+                    "Sublocation: %{customdata[5]}<br>"
+                    "Sales: KES %{customdata[6]:,.0f}<extra></extra>"
                 ),
             )
             for trace in scatter.data:
@@ -159,10 +160,10 @@ def sl_click(click_data, shapefile, boroughs, counties, locations, repcats, cats
     point     = click_data["points"][0]
     use_wards = (shapefile == "wards")
 
-    # Scatter dot click → SUBLOCATION is customdata[4]; always use sublocation mode
+    # Scatter dot click → SUBLOCATION is customdata[5] (after sales_rep at [4])
     if "customdata" in point:
         group_col = "SUBLOCATION"
-        group_val = point["customdata"][4]
+        group_val = point["customdata"][5]
     elif "location" in point:
         group_col = "WARD_KEY" if use_wards else "SUBLOCATION"
         group_val = point["location"]
