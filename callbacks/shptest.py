@@ -292,7 +292,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
                     map_style=ms,
                 )
                 scatter.update_traces(
-                    marker=dict(size=10, line=dict(color="white", width=1)),
+                    marker=dict(size=10),
                     hovertemplate=(
                         "<b>%{customdata[0]}</b>  %{customdata[1]}<br>"
                         "%{customdata[2]} · %{customdata[3]}<br>"
