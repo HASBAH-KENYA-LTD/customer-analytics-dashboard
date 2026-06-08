@@ -10,7 +10,9 @@ from dash import callback, Input, Output, State
 
 from config import BORDER, TEXT, CAT_COLORS, REP_CAT_COLORS, TOTAL_COL
 from data import df
-from shp_data import SHP_SL_GDF_CURRENT, SHP_GJ_CURRENT, SHP_SL_GDF_PROPOSED, SHP_GJ_PROPOSED
+from shp_data import (SHP_SL_GDF_CURRENT, SHP_GJ_CURRENT,
+                      SHP_SL_GDF_PROPOSED, SHP_GJ_PROPOSED,
+                      SHP_SERVED_BY_OPTIONS)
 from ui import rep_option
 
 _log       = logging.getLogger("shptest.app")
@@ -109,20 +111,20 @@ def sht_reset(_):
     Input("sht-reset",     "n_clicks"),
 )
 def sht_populate_reps(type_grp, version, _reset):
-    """Populate the distributor dropdown based on selected type (VAN / SUBD / both)."""
-    gdf = SHP_SL_GDF_PROPOSED if version == "proposed" else SHP_SL_GDF_CURRENT
-    all_reps = sorted(
-        v for v in gdf["Served By"].dropna().unique()
-        if v != "Unassigned"
-    )
+    """Populate the distributor dropdown.
+
+    Uses the union of BOTH shapefile versions so every distributor
+    (current and proposed) is always selectable regardless of the
+    version toggle — matches the top-bar 'Served By' dropdown.
+    """
+    all_reps = sorted(o["value"] for o in SHP_SERVED_BY_OPTIONS)
     if type_grp == "VAN":
-        reps = sorted(v for v in all_reps if "van" in v.lower())
+        reps = [v for v in all_reps if "van" in v.lower()]
     elif type_grp == "SUBD":
-        reps = sorted(v for v in all_reps if "van" not in v.lower())
+        reps = [v for v in all_reps if "van" not in v.lower()]
     else:
         reps = all_reps
-    options = [rep_option(r) for r in reps]
-    return options, reps
+    return [rep_option(r) for r in reps], reps
 
 
 @callback(
