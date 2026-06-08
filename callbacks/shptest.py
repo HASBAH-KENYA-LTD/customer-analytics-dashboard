@@ -38,22 +38,38 @@ _PALETTE = [
     "#AA4499",  # purple
 ]
 
-# Semantic colour scales for "Served By" view
-# Van-type values (name contains "van") → blue family (dark → light)
-# SUBD-type values                      → green family (dark → light)
+# Polygon fill colours — blue for VAN areas, green for SUBD areas
 _BLUE_SHADES  = ["#0D47A1", "#1565C0", "#1976D2", "#1E88E5",
                   "#42A5F5", "#64B5F6", "#90CAF9", "#BBDEFB"]
 _GREEN_SHADES = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047",
                   "#66BB6A", "#81C784", "#A5D6A7", "#C8E6C9"]
 
+# Customer dot colours — warm contrasting hues so dots pop against cool polygon fills
+# VAN dots → orange/amber  (contrasts against blue polygons)
+# SUBD dots → red/coral    (contrasts against green polygons)
+_DOT_VAN_SHADES  = ["#E65100", "#F57C00", "#FB8C00", "#FFA000",
+                     "#FFB300", "#FFC107", "#FFD54F", "#FFE082"]
+_DOT_SUBD_SHADES = ["#B71C1C", "#C62828", "#D32F2F", "#E53935",
+                     "#F44336", "#EF5350", "#E57373", "#EF9A9A"]
+
 
 def _served_by_color_map(vans, subds):
-    """Return a color_discrete_map: blue shades for Vans, green shades for SUBDs."""
+    """Polygon fill map: blue shades for Vans, green shades for SUBDs."""
     cmap = {}
     for i, v in enumerate(vans):
         cmap[v] = _BLUE_SHADES[i % len(_BLUE_SHADES)]
     for i, v in enumerate(subds):
         cmap[v] = _GREEN_SHADES[i % len(_GREEN_SHADES)]
+    return cmap
+
+
+def _dot_color_map(vans, subds):
+    """Dot color map: orange/amber for VAN dots, red/coral for SUBD dots."""
+    cmap = {}
+    for i, v in enumerate(vans):
+        cmap[v] = _DOT_VAN_SHADES[i % len(_DOT_VAN_SHADES)]
+    for i, v in enumerate(subds):
+        cmap[v] = _DOT_SUBD_SHADES[i % len(_DOT_SUBD_SHADES)]
     return cmap
 
 
@@ -238,7 +254,54 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
             dm = dm[dm["BOROUGH"].isin(boroughs)]
         if counties:
             dm = dm[dm["COUNTY"].isin(counties)]
-        if len(dm):
+
+        if dots == "distributor":
+            # Map each customer's sublocation → Served By using the full (unfiltered) GDF
+            sl_to_dist = (
+                src_gdf[["SLNAME", "Served By"]]
+                .drop_duplicates("SLNAME")
+                .set_index("SLNAME")["Served By"]
+            )
+            dm = dm.copy()
+            dm["distributor"] = dm["SUBLOCATION"].map(sl_to_dist)
+            dm = dm[dm["distributor"].notna() & (dm["distributor"] != "Unassigned")]
+            # Keep only customers whose distributor matches the active type-reps filter
+            if type_reps:
+                dm = dm[dm["distributor"].isin(type_reps)]
+
+            if len(dm):
+                all_dists = sorted(dm["distributor"].unique())
+                d_vans  = sorted(v for v in all_dists if "van" in v.lower())
+                d_subds = sorted(v for v in all_dists if "van" not in v.lower())
+                # Warm contrasting colors so dots pop against the cool polygon fills
+                dist_cmap = _dot_color_map(d_vans, d_subds)
+
+                scatter = px.scatter_map(
+                    dm, lat="LAT", lon="LONG",
+                    color="distributor",
+                    color_discrete_map=dist_cmap,
+                    category_orders={"distributor": d_vans + d_subds},
+                    custom_data=["customer_id_PK", "customer_name",
+                                 "category", "rep_category", "sales_rep",
+                                 "SUBLOCATION", "distributor", TOTAL_COL],
+                    opacity=0.90,
+                    map_style=ms,
+                )
+                scatter.update_traces(
+                    marker=dict(size=10, line=dict(color="white", width=1)),
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b>  %{customdata[1]}<br>"
+                        "%{customdata[2]} · %{customdata[3]}<br>"
+                        "%{customdata[4]}<br>"
+                        "Sublocation: %{customdata[5]}<br>"
+                        "Distributor: <b>%{customdata[6]}</b><br>"
+                        "Sales: KES %{customdata[7]:,.0f}<extra></extra>"
+                    ),
+                )
+                for trace in scatter.data:
+                    fig.add_trace(trace)
+
+        elif len(dm):
             cmap = CAT_COLORS if dots == "category" else REP_CAT_COLORS
             scatter = px.scatter_map(
                 dm, lat="LAT", lon="LONG",

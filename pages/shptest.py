@@ -88,9 +88,10 @@ shptest_body = html.Div([
             html.P("Customer dots", style={**LBL_S,"marginBottom":"2px"}),
             dcc.RadioItems(
                 id="sht-dots",
-                options=[{"label":" None",       "value":"none"},
-                         {"label":" By category","value":"category"},
-                         {"label":" By rep cat", "value":"rep_category"}],
+                options=[{"label":" None",            "value":"none"},
+                         {"label":" By category",     "value":"category"},
+                         {"label":" By rep cat",      "value":"rep_category"},
+                         {"label":" By distributor",  "value":"distributor"}],
                 value="none",
                 inline=True,
                 labelStyle={"marginRight":"12px","fontSize":"12px"},
