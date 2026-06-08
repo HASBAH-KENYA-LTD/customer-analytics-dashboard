@@ -4,6 +4,7 @@ callbacks/shptest.py — sht_* callbacks for the raw shapefile test page (/shpte
 
 import math
 import logging
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import callback, Input, Output, State
@@ -258,12 +259,13 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
             dm = dm[dm["COUNTY"].isin(counties)]
 
         if dots == "distributor":
-            # Map each customer's sublocation → Served By using the full (unfiltered) GDF
-            sl_to_dist = (
-                src_gdf[["SLNAME", "Served By"]]
-                .drop_duplicates("SLNAME")
-                .set_index("SLNAME")["Served By"]
-            )
+            # Always use Proposed (detailed names) for the lookup, falling back to Current.
+            # Current uses generic names like "Van" which won't match the typed reps filter.
+            _sl_map = pd.concat([
+                SHP_SL_GDF_PROPOSED[["SLNAME", "Served By"]],
+                SHP_SL_GDF_CURRENT[["SLNAME", "Served By"]],
+            ]).drop_duplicates("SLNAME")   # Proposed wins on duplicates
+            sl_to_dist = _sl_map.set_index("SLNAME")["Served By"]
             dm = dm.copy()
             dm["distributor"] = dm["SUBLOCATION"].map(sl_to_dist)
             dm = dm[dm["distributor"].notna() & (dm["distributor"] != "Unassigned")]
