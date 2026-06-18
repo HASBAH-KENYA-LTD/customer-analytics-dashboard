@@ -77,6 +77,18 @@ def _dot_color_map(vans, subds):
 
 
 @callback(
+    Output("sht-dist-panel-body", "style"),
+    Output("sht-panel-toggle",    "children"),
+    Input("sht-panel-toggle", "n_clicks"),
+    prevent_initial_call=True,
+)
+def sht_toggle_panel(n):
+    if (n or 0) % 2 == 1:   # odd click → collapse
+        return {"display": "none"}, "▼"
+    return {"padding": "12px 12px 14px"}, "▲"
+
+
+@callback(
     Output("sht-help-panel", "style"),
     Input("sht-help-btn",   "n_clicks"),
     Input("sht-help-close", "n_clicks"),

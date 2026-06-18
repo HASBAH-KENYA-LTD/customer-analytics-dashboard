@@ -240,54 +240,79 @@ shptest_body = html.Div([
                               "modeBarButtonsToRemove":["select2d","lasso2d"]}),
         ]),
 
-        # Floating panel — overlaid on the map, right side, below the Plotly legend
+        # Floating panel — overlaid on the map, right side
         html.Div(style={
-            "position":   "absolute",
-            "top":        "10px",
-            "right":      "10px",
-            "width":      "210px",
-            "zIndex":     "500",
-            "background": "rgba(255,255,255,0.93)",
-            "border":     "1px solid rgba(0,0,0,0.12)",
+            "position":     "absolute",
+            "top":          "10px",
+            "right":        "10px",
+            "width":        "210px",
+            "zIndex":       "500",
+            "background":   "rgba(255,255,255,0.93)",
+            "border":       "1px solid rgba(0,0,0,0.12)",
             "borderRadius": "8px",
-            "padding":    "12px 12px 14px",
-            "boxShadow":  "0 2px 8px rgba(0,0,0,.14)",
+            "boxShadow":    "0 2px 8px rgba(0,0,0,.14)",
+            "overflow":     "hidden",
         }, children=[
 
-            html.P("Distributor Type",
-                   style={**LBL_S, "marginBottom":"6px",
-                          "fontWeight":"700", "fontSize":"11px",
-                          "textTransform":"uppercase", "letterSpacing":"0.04em"}),
+            # Header — always visible, click toggle to collapse/expand
+            html.Div(style={
+                "display":        "flex",
+                "justifyContent": "space-between",
+                "alignItems":     "center",
+                "padding":        "9px 12px",
+                "borderBottom":   "1px solid rgba(0,0,0,0.08)",
+            }, children=[
+                html.P("Distributor Filter",
+                       style={**LBL_S, "margin":0, "fontWeight":"700",
+                              "fontSize":"11px", "textTransform":"uppercase",
+                              "letterSpacing":"0.04em"}),
+                html.Button("▲", id="sht-panel-toggle",
+                            title="Collapse / expand",
+                            style={"background":"none","border":"none",
+                                   "cursor":"pointer","fontSize":"11px",
+                                   "color":"var(--muted)","padding":"0 2px",
+                                   "lineHeight":"1"}),
+            ]),
 
-            dcc.RadioItems(
-                id="sht-type-grp",
-                options=[
-                    {"label": " Both", "value": "both"},
-                    {"label": " VAN",  "value": "VAN"},
-                    {"label": " SUBD", "value": "SUBD"},
-                ],
-                value="both",
-                inline=True,
-                labelStyle={"marginRight":"10px","fontSize":"12px","fontWeight":"600"},
-                inputStyle={"marginRight":"4px"},
-            ),
+            # Collapsible body
+            html.Div(id="sht-dist-panel-body",
+                     style={"padding":"12px 12px 14px"}, children=[
 
-            html.Hr(style={"margin":"8px 0","borderColor":"rgba(0,0,0,0.10)"}),
+                html.P("Distributor Type",
+                       style={**LBL_S, "marginBottom":"6px",
+                              "fontWeight":"700", "fontSize":"11px",
+                              "textTransform":"uppercase", "letterSpacing":"0.04em"}),
 
-            html.P("Select Distributors",
-                   style={**LBL_S, "marginBottom":"4px",
-                          "fontSize":"11px", "textTransform":"uppercase",
-                          "letterSpacing":"0.04em"}),
+                dcc.RadioItems(
+                    id="sht-type-grp",
+                    options=[
+                        {"label": " Both", "value": "both"},
+                        {"label": " VAN",  "value": "VAN"},
+                        {"label": " SUBD", "value": "SUBD"},
+                    ],
+                    value="both",
+                    inline=True,
+                    labelStyle={"marginRight":"10px","fontSize":"12px","fontWeight":"600"},
+                    inputStyle={"marginRight":"4px"},
+                ),
 
-            dcc.Dropdown(
-                id="sht-type-reps",
-                options=_all_rep_opts,
-                value=_all_rep_vals,
-                multi=True,
-                placeholder="Select distributors...",
-                style={**DROP_S, "marginBottom":0, "fontSize":"12px"},
-                maxHeight=400,
-            ),
+                html.Hr(style={"margin":"8px 0","borderColor":"rgba(0,0,0,0.10)"}),
+
+                html.P("Select Distributors",
+                       style={**LBL_S, "marginBottom":"4px",
+                              "fontSize":"11px", "textTransform":"uppercase",
+                              "letterSpacing":"0.04em"}),
+
+                dcc.Dropdown(
+                    id="sht-type-reps",
+                    options=_all_rep_opts,
+                    value=_all_rep_vals,
+                    multi=True,
+                    placeholder="Select distributors...",
+                    style={**DROP_S, "marginBottom":0, "fontSize":"12px"},
+                    maxHeight=400,
+                ),
+            ]),
         ]),
     ]),
     # ── Distributor coverage table ────────────────────────────────────────────
