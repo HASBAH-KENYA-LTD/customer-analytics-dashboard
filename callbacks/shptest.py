@@ -344,3 +344,45 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
     )
 
     return fig, f"{len(gdf):,} sublocations shown"
+
+
+@callback(
+    Output("sht-dist-table", "data"),
+    Input("sht-version",   "value"),
+    Input("sht-borough",   "value"),
+    Input("sht-county",    "value"),
+    Input("sht-servedby",  "value"),
+    Input("sht-division",  "value"),
+    Input("sht-type-reps", "value"),
+)
+def sht_dist_table(version, boroughs, counties, served_by, divisions, type_reps):
+    """Populate the distributor-coverage summary table below the map."""
+    src_gdf = SHP_SL_GDF_PROPOSED if version == "proposed" else SHP_SL_GDF_CURRENT
+    gdf = src_gdf.copy()
+
+    if boroughs:
+        gdf = gdf[gdf["Borough"].isin(boroughs)]
+    if counties:
+        gdf = gdf[gdf["County"].isin(counties)]
+    if served_by:
+        gdf = gdf[gdf["Served By"].isin(served_by)]
+    if divisions:
+        gdf = gdf[gdf["Division"].isin(divisions)]
+    if type_reps:
+        gdf = gdf[gdf["Served By"].isin(type_reps)]
+
+    gdf = gdf[(gdf["Served By"].notna()) & (gdf["Served By"] != "Unassigned")]
+    if gdf.empty:
+        return []
+
+    rows = []
+    for dist, grp in gdf.groupby("Served By"):
+        rows.append({
+            "Served By":        dist,
+            "Type":             "VAN" if "van" in dist.lower() else "SUBD",
+            "Boroughs Covered": ", ".join(sorted(grp["Borough"].dropna().unique())),
+            "Sublocations":     len(grp),
+        })
+
+    rows.sort(key=lambda r: (0 if r["Type"] == "VAN" else 1, r["Served By"]))
+    return rows

@@ -7,7 +7,7 @@ Exports:
   shptest_body    — filters + map only, no navbar (used by shptest_app.py)
 """
 
-from dash import dcc, html
+from dash import dcc, html, dash_table
 
 from config import CARD_S, LBL_S, DROP_S, MAP_STYLE_OPTS, PRIMARY
 from shp_data import (
@@ -231,7 +231,7 @@ shptest_body = html.Div([
     ]),
 
     # ── Map with floating distributor-filter panel ────────────────────────────
-    html.Div(style={**CARD_S, "padding":"6px", "position":"relative"}, children=[
+    html.Div(style={**CARD_S, "padding":"6px", "position":"relative", "marginBottom":"12px"}, children=[
 
         dcc.Loading(type="circle", children=[
             dcc.Graph(id="sht-map",
@@ -289,6 +289,68 @@ shptest_body = html.Div([
                 maxHeight=400,
             ),
         ]),
+    ]),
+    # ── Distributor coverage table ────────────────────────────────────────────
+    html.Div(style={**CARD_S, "padding":"14px 16px"}, children=[
+        html.P("Distributor Coverage by Borough",
+               style={**LBL_S, "marginBottom":"10px", "fontWeight":"700",
+                      "fontSize":"13px", "textTransform":"uppercase",
+                      "letterSpacing":"0.04em"}),
+        dash_table.DataTable(
+            id="sht-dist-table",
+            columns=[
+                {"name": "Served By",        "id": "Served By"},
+                {"name": "Type",             "id": "Type"},
+                {"name": "Boroughs Covered", "id": "Boroughs Covered"},
+                {"name": "Sublocations",     "id": "Sublocations",
+                 "type": "numeric"},
+            ],
+            data=[],
+            sort_action="native",
+            filter_action="native",
+            page_size=25,
+            style_table={"overflowX": "auto"},
+            style_cell={
+                "fontFamily": "inherit",
+                "fontSize": "12px",
+                "padding": "8px 14px",
+                "textAlign": "left",
+                "border": "1px solid rgba(0,0,0,0.08)",
+                "whiteSpace": "normal",
+                "height": "auto",
+            },
+            style_header={
+                "fontWeight": "600",
+                "fontSize": "11px",
+                "textTransform": "uppercase",
+                "letterSpacing": "0.04em",
+                "backgroundColor": "rgba(0,0,0,0.04)",
+                "border": "1px solid rgba(0,0,0,0.12)",
+                "whiteSpace": "nowrap",
+            },
+            style_cell_conditional=[
+                {"if": {"column_id": "Sublocations"},
+                 "textAlign": "center", "width": "110px"},
+                {"if": {"column_id": "Type"},
+                 "textAlign": "center", "width": "80px", "fontWeight": "600"},
+                {"if": {"column_id": "Served By"},
+                 "minWidth": "160px", "maxWidth": "200px", "fontWeight": "600"},
+                {"if": {"column_id": "Boroughs Covered"},
+                 "minWidth": "300px"},
+            ],
+            style_data_conditional=[
+                {"if": {"filter_query": '{Type} = "VAN"', "column_id": "Type"},
+                 "color": "#1565C0"},
+                {"if": {"filter_query": '{Type} = "VAN"', "column_id": "Served By"},
+                 "color": "#1565C0"},
+                {"if": {"filter_query": '{Type} = "SUBD"', "column_id": "Type"},
+                 "color": "#2E7D32"},
+                {"if": {"filter_query": '{Type} = "SUBD"', "column_id": "Served By"},
+                 "color": "#2E7D32"},
+                {"if": {"row_index": "odd"},
+                 "backgroundColor": "rgba(0,0,0,0.02)"},
+            ],
+        ),
     ]),
 ])
 
