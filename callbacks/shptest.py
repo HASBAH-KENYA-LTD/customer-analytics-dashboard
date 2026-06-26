@@ -11,9 +11,7 @@ from dash import callback, Input, Output, State
 
 from config import BORDER, TEXT, CAT_COLORS, REP_CAT_COLORS, TOTAL_COL
 from data import df
-from shp_data import (SHP_SL_GDF_CURRENT, SHP_GJ_CURRENT,
-                      SHP_SL_GDF_PROPOSED, SHP_GJ_PROPOSED,
-                      SHP_SERVED_BY_OPTIONS)
+from shp_data import SHP_SL_GDF, SHP_GJ, SHP_REP_TYPES, SHP_SERVED_BY_OPTIONS
 from ui import rep_option
 
 _log       = logging.getLogger("shptest.app")
@@ -41,38 +39,53 @@ _PALETTE = [
     "#AA4499",  # purple
 ]
 
-# Polygon fill colours — blue for VAN areas, green for SUBD areas
-_BLUE_SHADES  = ["#0D47A1", "#1565C0", "#1976D2", "#1E88E5",
-                  "#42A5F5", "#64B5F6", "#90CAF9", "#BBDEFB"]
-_GREEN_SHADES = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047",
-                  "#66BB6A", "#81C784", "#A5D6A7", "#C8E6C9"]
+# Polygon fill colours — blue for Van, green for Sub-D, purple for Shared
+_BLUE_SHADES   = ["#0D47A1", "#1565C0", "#1976D2", "#1E88E5",
+                   "#42A5F5", "#64B5F6", "#90CAF9", "#BBDEFB"]
+_GREEN_SHADES  = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047",
+                   "#66BB6A", "#81C784", "#A5D6A7", "#C8E6C9"]
+_PURPLE_SHADES = ["#4A148C", "#6A1B9A", "#7B1FA2", "#8E24AA",
+                   "#9C27B0", "#AB47BC", "#BA68C8", "#CE93D8"]
+_UNASSIGNED_COLOR = "#9E9E9E"
 
 # Customer dot colours — warm contrasting hues so dots pop against cool polygon fills
-# VAN dots → orange/amber  (contrasts against blue polygons)
-# SUBD dots → red/coral    (contrasts against green polygons)
-_DOT_VAN_SHADES  = ["#E65100", "#F57C00", "#FB8C00", "#FFA000",
-                     "#FFB300", "#FFC107", "#FFD54F", "#FFE082"]
-_DOT_SUBD_SHADES = ["#B71C1C", "#C62828", "#D32F2F", "#E53935",
-                     "#F44336", "#EF5350", "#E57373", "#EF9A9A"]
+_DOT_VAN_SHADES    = ["#E65100", "#F57C00", "#FB8C00", "#FFA000",
+                       "#FFB300", "#FFC107", "#FFD54F", "#FFE082"]
+_DOT_SUBD_SHADES   = ["#B71C1C", "#C62828", "#D32F2F", "#E53935",
+                       "#F44336", "#EF5350", "#E57373", "#EF9A9A"]
+_DOT_SHARED_SHADES = ["#AD1457", "#C2185B", "#D81B60", "#E91E63",
+                       "#EC407A", "#F06292", "#F48FB1", "#F8BBD0"]
+
+_TYPE_COLORS = {
+    "Van":        "#1565C0",
+    "Sub-D":      "#2E7D32",
+    "Shared":     "#6A1B9A",
+    "Unassigned": _UNASSIGNED_COLOR,
+}
 
 
-def _served_by_color_map(vans, subds):
-    """Polygon fill map: blue shades for Vans, green shades for SUBDs."""
+def _served_by_color_map(vans, subds, shared):
+    """Polygon fill map: blue=Van, green=Sub-D, purple=Shared, grey=Unassigned."""
     cmap = {}
     for i, v in enumerate(vans):
         cmap[v] = _BLUE_SHADES[i % len(_BLUE_SHADES)]
     for i, v in enumerate(subds):
         cmap[v] = _GREEN_SHADES[i % len(_GREEN_SHADES)]
+    for i, v in enumerate(shared):
+        cmap[v] = _PURPLE_SHADES[i % len(_PURPLE_SHADES)]
+    cmap["Unassigned"] = _UNASSIGNED_COLOR
     return cmap
 
 
-def _dot_color_map(vans, subds):
-    """Dot color map: orange/amber for VAN dots, red/coral for SUBD dots."""
+def _dot_color_map(vans, subds, shared):
+    """Dot color map: orange=Van, red=Sub-D, pink=Shared."""
     cmap = {}
     for i, v in enumerate(vans):
         cmap[v] = _DOT_VAN_SHADES[i % len(_DOT_VAN_SHADES)]
     for i, v in enumerate(subds):
         cmap[v] = _DOT_SUBD_SHADES[i % len(_DOT_SUBD_SHADES)]
+    for i, v in enumerate(shared):
+        cmap[v] = _DOT_SHARED_SHADES[i % len(_DOT_SHARED_SHADES)]
     return cmap
 
 
@@ -113,37 +126,42 @@ def sht_toggle_help(open_clicks, close_clicks):
     prevent_initial_call=True,
 )
 def sht_reset(_):
-    return None, None, None, None, "both"
+    return None, None, None, None, "All"
 
 
 @callback(
     Output("sht-type-reps", "options"),
     Output("sht-type-reps", "value"),
     Input("sht-type-grp",  "value"),
-    Input("sht-version",   "value"),
+    Input("sht-borough",   "value"),
     Input("sht-reset",     "n_clicks"),
 )
-def sht_populate_reps(type_grp, version, _reset):
+def sht_populate_reps(type_grp, boroughs, _reset):
     """Populate the distributor dropdown.
 
-    Uses the union of BOTH shapefile versions so every distributor
-    (current and proposed) is always selectable regardless of the
-    version toggle — matches the top-bar 'Served By' dropdown.
+    Narrows to distributors that actually serve the selected borough(s),
+    and to the selected Hfs_Class type (Van / Sub-D / Shared / Unserved).
     """
-    all_reps = sorted(o["value"] for o in SHP_SERVED_BY_OPTIONS)
-    if type_grp == "VAN":
-        reps = [v for v in all_reps if "van" in v.lower()]
-    elif type_grp == "SUBD":
-        reps = [v for v in all_reps if "van" not in v.lower()]
-    else:
-        reps = all_reps
-    return [rep_option(r) for r in reps], reps
+    gdf = SHP_SL_GDF
+    if boroughs:
+        gdf = gdf[gdf["Borough"].isin(boroughs)]
+
+    if type_grp == "Unserved":
+        reps = ["Unassigned"] if (gdf["Served By"] == "Unassigned").any() else []
+        return [rep_option("Unassigned", "Unassigned")], reps
+
+    served = gdf[gdf["Served By"] != "Unassigned"]
+    if type_grp and type_grp != "All":
+        served = served[served["Type"] == type_grp]
+    reps = sorted(served["Served By"].unique())
+
+    opts = [rep_option(r, SHP_REP_TYPES.get(r)) for r in reps]
+    return opts, reps
 
 
 @callback(
     Output("sht-map",   "figure"),
     Output("sht-count", "children"),
-    Input("sht-version",   "value"),
     Input("sht-borough",   "value"),
     Input("sht-county",    "value"),
     Input("sht-servedby",  "value"),
@@ -154,15 +172,8 @@ def sht_populate_reps(type_grp, version, _reset):
     Input("sht-opacity",   "value"),
     Input("sht-type-reps", "value"),
 )
-def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_style, dots, opacity, type_reps):
-    if version == "proposed":
-        src_gdf = SHP_SL_GDF_PROPOSED
-        shp_gj  = SHP_GJ_PROPOSED
-    else:
-        src_gdf = SHP_SL_GDF_CURRENT
-        shp_gj  = SHP_GJ_CURRENT
-
-    gdf = src_gdf.copy()
+def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dots, opacity, type_reps):
+    gdf = SHP_SL_GDF.copy()
 
     # Apply filters
     if boroughs:
@@ -173,13 +184,13 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
         gdf = gdf[gdf["Served By"].isin(served_by)]
     if divisions:
         gdf = gdf[gdf["Division"].isin(divisions)]
-    # Side-panel distributor filter — also excludes unassigned polygons
+    # Side-panel distributor filter — drives which polygons (served or unserved) show
     if type_reps:
         gdf = gdf[gdf["Served By"].isin(type_reps)]
 
     _audit_log.info(
-        "MAP_FILTER version=%s borough=%s county=%s served_by=%s division=%s type_reps=%s colorby=%s dots=%s → %d polygons",
-        version, boroughs, counties, served_by, divisions, type_reps, colorby, dots, len(gdf),
+        "MAP_FILTER borough=%s county=%s served_by=%s division=%s type_reps=%s colorby=%s dots=%s → %d polygons",
+        boroughs, counties, served_by, divisions, type_reps, colorby, dots, len(gdf),
     )
 
     if gdf.empty:
@@ -205,19 +216,17 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
 
     # ── Colour map ────────────────────────────────────────────────────────────
     if colorby == "Served By":
-        # Drop unassigned (null) polygons — they have no distributor
-        gdf = gdf[(gdf["Served By"].notna()) & (gdf["Served By"] != "Unassigned")].copy()
-        if gdf.empty:
-            empty = go.Figure()
-            empty.update_layout(margin=dict(l=0,r=0,t=0,b=0),
-                                paper_bgcolor="rgba(0,0,0,0)")
-            return empty, "0 sublocations"
-        all_vals = gdf["Served By"].unique()
-        # Vans first in legend (blue family), then SUBDs (green family)
-        vans  = sorted(v for v in all_vals if "van" in v.lower())
-        subds = sorted(v for v in all_vals if "van" not in v.lower())
-        cats  = vans + subds
-        color_map = _served_by_color_map(vans, subds)
+        all_vals = gdf[["Served By", "Type"]].drop_duplicates()
+        vans   = sorted(all_vals[all_vals["Type"] == "Van"]["Served By"])
+        subds  = sorted(all_vals[all_vals["Type"] == "Sub-D"]["Served By"])
+        shared = sorted(all_vals[all_vals["Type"] == "Shared"]["Served By"])
+        cats = vans + subds + shared
+        if "Unassigned" in gdf["Served By"].values:
+            cats = cats + ["Unassigned"]
+        color_map = _served_by_color_map(vans, subds, shared)
+    elif colorby == "Type":
+        cats = [c for c in ["Van", "Sub-D", "Shared", "Unassigned"] if c in gdf["Type"].unique()]
+        color_map = _TYPE_COLORS
     else:
         cats = sorted(gdf[colorby].dropna().unique())
         color_map = {c: _PALETTE[i % len(_PALETTE)] for i, c in enumerate(cats)}
@@ -229,6 +238,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
         "Division":  True,
         "Ward":      True,
         "Served By": True,
+        "Type":      True,
         "SUM_HOUSEH":True,
         "SL_KEY":    False,
     }
@@ -239,6 +249,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
         "Division":   "Division",
         "Ward":       "Ward",
         "Served By":  "Served By",
+        "Type":       "Service Type",
         "SUM_HOUSEH": "Households",
     }
     if "OldServed" in gdf.columns:
@@ -247,7 +258,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
 
     fig = px.choropleth_map(
         gdf,
-        geojson=shp_gj,
+        geojson=SHP_GJ,
         featureidkey="id",
         locations="SL_KEY",
         color=colorby,
@@ -271,13 +282,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
             dm = dm[dm["COUNTY"].isin(counties)]
 
         if dots == "distributor":
-            # Always use Proposed (detailed names) for the lookup, falling back to Current.
-            # Current uses generic names like "Van" which won't match the typed reps filter.
-            _sl_map = pd.concat([
-                SHP_SL_GDF_PROPOSED[["SLNAME", "Served By"]],
-                SHP_SL_GDF_CURRENT[["SLNAME", "Served By"]],
-            ]).drop_duplicates("SLNAME")   # Proposed wins on duplicates
-            sl_to_dist = _sl_map.set_index("SLNAME")["Served By"]
+            sl_to_dist = SHP_SL_GDF.drop_duplicates("SLNAME").set_index("SLNAME")["Served By"]
             dm = dm.copy()
             dm["distributor"] = dm["SUBLOCATION"].map(sl_to_dist)
             dm = dm[dm["distributor"].notna() & (dm["distributor"] != "Unassigned")]
@@ -287,16 +292,17 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
 
             if len(dm):
                 all_dists = sorted(dm["distributor"].unique())
-                d_vans  = sorted(v for v in all_dists if "van" in v.lower())
-                d_subds = sorted(v for v in all_dists if "van" not in v.lower())
+                d_vans   = [d for d in all_dists if SHP_REP_TYPES.get(d) == "Van"]
+                d_subds  = [d for d in all_dists if SHP_REP_TYPES.get(d) == "Sub-D"]
+                d_shared = [d for d in all_dists if SHP_REP_TYPES.get(d) == "Shared"]
                 # Warm contrasting colors so dots pop against the cool polygon fills
-                dist_cmap = _dot_color_map(d_vans, d_subds)
+                dist_cmap = _dot_color_map(d_vans, d_subds, d_shared)
 
                 scatter = px.scatter_map(
                     dm, lat="LAT", lon="LONG",
                     color="distributor",
                     color_discrete_map=dist_cmap,
-                    category_orders={"distributor": d_vans + d_subds},
+                    category_orders={"distributor": d_vans + d_subds + d_shared},
                     custom_data=["customer_id_PK", "customer_name",
                                  "category", "rep_category", "sales_rep",
                                  "SUBLOCATION", "distributor", TOTAL_COL],
@@ -352,7 +358,7 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
             x=0.01, xanchor="left",
             y=0.99, yanchor="top",
         ),
-        uirevision=f"{version}-{boroughs}-{counties}-{served_by}-{divisions}-{type_reps}",
+        uirevision=f"{boroughs}-{counties}-{served_by}-{divisions}-{type_reps}",
     )
 
     return fig, f"{len(gdf):,} sublocations shown"
@@ -360,17 +366,15 @@ def sht_update(version, boroughs, counties, served_by, divisions, colorby, map_s
 
 @callback(
     Output("sht-dist-table", "data"),
-    Input("sht-version",   "value"),
     Input("sht-borough",   "value"),
     Input("sht-county",    "value"),
     Input("sht-servedby",  "value"),
     Input("sht-division",  "value"),
     Input("sht-type-reps", "value"),
 )
-def sht_dist_table(version, boroughs, counties, served_by, divisions, type_reps):
+def sht_dist_table(boroughs, counties, served_by, divisions, type_reps):
     """Populate the distributor-coverage summary table below the map."""
-    src_gdf = SHP_SL_GDF_PROPOSED if version == "proposed" else SHP_SL_GDF_CURRENT
-    gdf = src_gdf.copy()
+    gdf = SHP_SL_GDF.copy()
 
     if boroughs:
         gdf = gdf[gdf["Borough"].isin(boroughs)]
@@ -391,10 +395,11 @@ def sht_dist_table(version, boroughs, counties, served_by, divisions, type_reps)
     for dist, grp in gdf.groupby("Served By"):
         rows.append({
             "Served By":        dist,
-            "Type":             "VAN" if "van" in dist.lower() else "SUBD",
+            "Type":             SHP_REP_TYPES.get(dist, grp["Type"].iloc[0]),
             "Boroughs Covered": ", ".join(sorted(grp["Borough"].dropna().unique())),
             "Sublocations":     len(grp),
         })
 
-    rows.sort(key=lambda r: (0 if r["Type"] == "VAN" else 1, r["Served By"]))
+    _TYPE_ORDER = {"Van": 0, "Sub-D": 1, "Shared": 2}
+    rows.sort(key=lambda r: (_TYPE_ORDER.get(r["Type"], 9), r["Served By"]))
     return rows

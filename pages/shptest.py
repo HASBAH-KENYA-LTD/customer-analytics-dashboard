@@ -12,21 +12,17 @@ from dash import dcc, html, dash_table
 from config import CARD_S, LBL_S, DROP_S, MAP_STYLE_OPTS, PRIMARY
 from shp_data import (
     SHP_BOROUGH_OPTIONS, SHP_COUNTY_OPTIONS,
-    SHP_SERVED_BY_OPTIONS, SHP_DIVISION_OPTIONS,
+    SHP_SERVED_BY_OPTIONS, SHP_DIVISION_OPTIONS, SHP_REP_TYPES,
 )
 from ui import navbar, rep_option
 
 _all_rep_vals = [o["value"] for o in SHP_SERVED_BY_OPTIONS]
-_all_rep_opts = [rep_option(o["value"]) for o in SHP_SERVED_BY_OPTIONS]
-
-_VERSION_OPTS = [
-    {"label": " Current",  "value": "current"},
-    {"label": " Proposed", "value": "proposed"},
-]
+_all_rep_opts = [rep_option(o["value"], SHP_REP_TYPES.get(o["value"])) for o in SHP_SERVED_BY_OPTIONS]
 
 _COLOR_OPTS = [
     {"label": " Borough",      "value": "Borough"},
     {"label": " Served By",    "value": "Served By"},
+    {"label": " Service Type", "value": "Type"},
     {"label": " County",       "value": "County"},
     {"label": " Division",     "value": "Division"},
 ]
@@ -38,19 +34,6 @@ shptest_body = html.Div([
     html.Div(style={**CARD_S, "display":"flex", "gap":"20px", "alignItems":"flex-end",
                     "flexWrap":"wrap", "marginBottom":"12px",
                     "padding":"10px 16px"}, children=[
-
-        html.Div(style={"borderRight":"2px solid var(--border,#dee2e6)",
-                        "paddingRight":"20px","marginRight":"4px"}, children=[
-            html.P("Map version", style={**LBL_S,"marginBottom":"4px"}),
-            dcc.RadioItems(
-                id="sht-version",
-                options=_VERSION_OPTS,
-                value="current",
-                inline=True,
-                labelStyle={"marginRight":"10px","fontSize":"13px","fontWeight":"600"},
-                inputStyle={"marginRight":"4px"},
-            ),
-        ]),
 
         html.Div(className="sht-filter-drop", children=[
             html.P("Borough", style={**LBL_S,"marginBottom":"2px"}),
@@ -182,8 +165,9 @@ shptest_body = html.Div([
                 ]),
                 html.Div([
                     html.Strong("Colour by"),
-                    html.P("Switch the fill colour between Borough, Served By, County, "
-                           "or Division. The legend updates automatically.",
+                    html.P("Switch the fill colour between Borough, Served By, Service Type "
+                           "(Van / Sub-D / Shared / Unassigned), County, or Division. "
+                           "The legend updates automatically.",
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
                 html.Div([
@@ -213,17 +197,13 @@ shptest_body = html.Div([
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
                 html.Div([
-                    html.Strong("Map version"),
-                    html.P("Toggle between Current (original boundaries) and "
-                           "Proposed (updated boundaries). Hover the proposed map "
-                           "to see the previous distributor under 'Previous Served By'.",
-                           style={"margin":"4px 0 0","color":"#555"}),
-                ]),
-                html.Div([
                     html.Strong("Distributor filter (on map)"),
                     html.P("The floating panel on the right of the map lets you pick "
-                           "Both / VAN / SUBD then deselect individual distributors. "
-                           "Blue ● = VAN routes, green ● = SUBD distributors.",
+                           "All / Van / Sub-D / Shared / Unserved, then deselect individual "
+                           "distributors. Selecting a Borough above first narrows this list "
+                           "to only the distributors that actually serve it. Blue ● = Van, "
+                           "green ● = Sub-D, purple ● = Shared. Choose 'Unserved' to show "
+                           "sublocations with no distributor assigned.",
                            style={"margin":"4px 0 0","color":"#555"}),
                 ]),
             ]),
@@ -286,11 +266,13 @@ shptest_body = html.Div([
                 dcc.RadioItems(
                     id="sht-type-grp",
                     options=[
-                        {"label": " Both", "value": "both"},
-                        {"label": " VAN",  "value": "VAN"},
-                        {"label": " SUBD", "value": "SUBD"},
+                        {"label": " All",      "value": "All"},
+                        {"label": " Van",      "value": "Van"},
+                        {"label": " Sub-D",    "value": "Sub-D"},
+                        {"label": " Shared",   "value": "Shared"},
+                        {"label": " Unserved", "value": "Unserved"},
                     ],
-                    value="both",
+                    value="All",
                     inline=True,
                     labelStyle={"marginRight":"10px","fontSize":"12px","fontWeight":"600"},
                     inputStyle={"marginRight":"4px"},
@@ -364,14 +346,18 @@ shptest_body = html.Div([
                  "minWidth": "300px"},
             ],
             style_data_conditional=[
-                {"if": {"filter_query": '{Type} = "VAN"', "column_id": "Type"},
+                {"if": {"filter_query": '{Type} = "Van"', "column_id": "Type"},
                  "color": "#1565C0"},
-                {"if": {"filter_query": '{Type} = "VAN"', "column_id": "Served By"},
+                {"if": {"filter_query": '{Type} = "Van"', "column_id": "Served By"},
                  "color": "#1565C0"},
-                {"if": {"filter_query": '{Type} = "SUBD"', "column_id": "Type"},
+                {"if": {"filter_query": '{Type} = "Sub-D"', "column_id": "Type"},
                  "color": "#2E7D32"},
-                {"if": {"filter_query": '{Type} = "SUBD"', "column_id": "Served By"},
+                {"if": {"filter_query": '{Type} = "Sub-D"', "column_id": "Served By"},
                  "color": "#2E7D32"},
+                {"if": {"filter_query": '{Type} = "Shared"', "column_id": "Type"},
+                 "color": "#6A1B9A"},
+                {"if": {"filter_query": '{Type} = "Shared"', "column_id": "Served By"},
+                 "color": "#6A1B9A"},
                 {"if": {"row_index": "odd"},
                  "backgroundColor": "rgba(0,0,0,0.02)"},
             ],

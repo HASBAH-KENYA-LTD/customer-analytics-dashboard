@@ -49,9 +49,16 @@ def fmt_kes(v):
 # DISTRIBUTOR OPTION HELPER
 # ─────────────────────────────────────────────────────────────────────────────
 
-def rep_option(rep):
-    """Dropdown option with a colored dot: blue for VAN types, green for SUBDs."""
-    color = "#1565C0" if "van" in rep.lower() else "#2E7D32"
+_REP_TYPE_COLORS = {
+    "Van":    "#1565C0",
+    "Sub-D":  "#2E7D32",
+    "Shared": "#6A1B9A",
+}
+
+
+def rep_option(rep, rep_type=None):
+    """Dropdown option with a colored dot: blue=Van, green=Sub-D, purple=Shared."""
+    color = _REP_TYPE_COLORS.get(rep_type, "#757575")
     return {"label": html.Span([
         html.Span("●", style={"color": color, "marginRight": "5px", "fontSize": "13px"}),
         rep,
