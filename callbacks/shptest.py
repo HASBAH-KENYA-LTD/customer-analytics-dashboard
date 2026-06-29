@@ -39,14 +39,23 @@ _PALETTE = [
     "#AA4499",  # purple
 ]
 
-# Polygon fill colours — blue for Van, green for Sub-D, purple for Shared
-_BLUE_SHADES   = ["#0D47A1", "#1565C0", "#1976D2", "#1E88E5",
-                   "#42A5F5", "#64B5F6", "#90CAF9", "#BBDEFB"]
-_GREEN_SHADES  = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047",
-                   "#66BB6A", "#81C784", "#A5D6A7", "#C8E6C9"]
-_PURPLE_SHADES = ["#4A148C", "#6A1B9A", "#7B1FA2", "#8E24AA",
-                   "#9C27B0", "#AB47BC", "#BA68C8", "#CE93D8"]
+# Polygon fill colours — every distributor gets its own distinct, stable colour
+_DIST_PALETTE = [
+    "#1565C0", "#2E7D32", "#6A1B9A", "#E65100", "#C62828",
+    "#00838F", "#AD1457", "#F9A825", "#283593", "#558B2F",
+    "#8E24AA", "#D84315", "#00695C", "#5D4037", "#37474F",
+    "#0277BD", "#7CB342", "#EF6C00", "#6D4C41", "#3949AB",
+    "#00ACC1", "#D81B60", "#9E9D24", "#4527A0",
+]
 _UNASSIGNED_COLOR = "#9E9E9E"
+
+# Stable per-distributor colour assignment — fixed at module load so a
+# distributor keeps the same colour regardless of which filters are active.
+_SERVED_BY_COLORS = {
+    name: _DIST_PALETTE[i % len(_DIST_PALETTE)]
+    for i, name in enumerate(sorted(SHP_REP_TYPES))
+}
+_SERVED_BY_COLORS["Unassigned"] = _UNASSIGNED_COLOR
 
 # Customer dot colours — warm contrasting hues so dots pop against cool polygon fills
 _DOT_VAN_SHADES    = ["#E65100", "#F57C00", "#FB8C00", "#FFA000",
@@ -62,19 +71,6 @@ _TYPE_COLORS = {
     "Shared":     "#6A1B9A",
     "Unassigned": _UNASSIGNED_COLOR,
 }
-
-
-def _served_by_color_map(vans, subds, shared):
-    """Polygon fill map: blue=Van, green=Sub-D, purple=Shared, grey=Unassigned."""
-    cmap = {}
-    for i, v in enumerate(vans):
-        cmap[v] = _BLUE_SHADES[i % len(_BLUE_SHADES)]
-    for i, v in enumerate(subds):
-        cmap[v] = _GREEN_SHADES[i % len(_GREEN_SHADES)]
-    for i, v in enumerate(shared):
-        cmap[v] = _PURPLE_SHADES[i % len(_PURPLE_SHADES)]
-    cmap["Unassigned"] = _UNASSIGNED_COLOR
-    return cmap
 
 
 def _dot_color_map(vans, subds, shared):
@@ -223,7 +219,7 @@ def sht_update(boroughs, counties, served_by, divisions, colorby, map_style, dot
         cats = vans + subds + shared
         if "Unassigned" in gdf["Served By"].values:
             cats = cats + ["Unassigned"]
-        color_map = _served_by_color_map(vans, subds, shared)
+        color_map = _SERVED_BY_COLORS
     elif colorby == "Type":
         cats = [c for c in ["Van", "Sub-D", "Shared", "Unassigned"] if c in gdf["Type"].unique()]
         color_map = _TYPE_COLORS
