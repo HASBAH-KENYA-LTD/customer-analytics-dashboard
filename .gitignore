@@ -58,3 +58,6 @@ build/
 #--- cagching--
 .cache_*
 
+# ── Local-only scripts ────────────────────────────────────────────────────────
+push-all.sh
+

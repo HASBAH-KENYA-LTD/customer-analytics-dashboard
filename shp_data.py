@@ -40,15 +40,18 @@ def _process_shp(path):
 
     for col in ["Boroughs", "COUNTY", "DIVNAME", "LOCNAME", "SLNAME", "WARD"]:
         raw[col] = raw[col].astype(str).str.strip().str.title()
+    raw["Served_By"] = raw["Served_By"].where(raw["Served_By"].notna(), "Unassigned")
     raw["Served_By"] = raw["Served_By"].astype(str).str.strip()
-    raw["Served_By"] = raw["Served_By"].where(raw["Served_By"] != "Nan", "Unassigned")
+    raw["Served_By"] = raw["Served_By"].replace({"Nan": "Unassigned", "None": "Unassigned", "": "Unassigned"})
 
+    raw["Hfs_Class"] = raw["Hfs_Class"].where(raw["Hfs_Class"].notna(), "Unassigned")
     raw["Hfs_Class"] = raw["Hfs_Class"].astype(str).str.strip()
-    raw["Hfs_Class"] = raw["Hfs_Class"].where(raw["Hfs_Class"] != "Nan", "Unassigned")
+    raw["Hfs_Class"] = raw["Hfs_Class"].replace({"Nan": "Unassigned", "None": "Unassigned", "": "Unassigned"})
 
     if "OldServed" in raw.columns:
+        raw["OldServed"] = raw["OldServed"].where(raw["OldServed"].notna(), "")
         raw["OldServed"] = raw["OldServed"].astype(str).str.strip()
-        raw["OldServed"] = raw["OldServed"].where(raw["OldServed"] != "Nan", "")
+        raw["OldServed"] = raw["OldServed"].replace({"Nan": "", "None": ""})
 
     raw["SL_KEY"] = raw["SLNAME"] + "||" + raw["Boroughs"] + "||" + raw["Served_By"]
 
