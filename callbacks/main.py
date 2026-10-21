@@ -140,7 +140,7 @@ def m_update(counties, cats, repcats, colorby, map_style, show_coke):
     c_ward   = bar_chart(d, "WARD",      "Customers by Ward (top 15)")
 
     # Monthly trend
-    monthly = d.groupby("category")[MONTHS].sum()
+    monthly = d.groupby("category")[MONTHS].sum(min_count=1)  # all-NaN month → gap
     trend = go.Figure()
     for cat, col in CAT_COLORS.items():
         if cat in monthly.index:

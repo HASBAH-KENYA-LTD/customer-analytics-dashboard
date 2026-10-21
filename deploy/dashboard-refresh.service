@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart dashboards so they reload HASBAH sales from SQL Server
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart shptest.service

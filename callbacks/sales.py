@@ -71,7 +71,7 @@ def s_update(counties, cats, month_range, repcats):
     d["PERIOD_SALES"] = d[sel_months].sum(axis=1)
 
     # ── Monthly trend (line) ──
-    monthly = d.groupby("category")[sel_months].sum()
+    monthly = d.groupby("category")[sel_months].sum(min_count=1)  # all-NaN month → gap
     trend   = go.Figure()
     for cat, col in CAT_COLORS.items():
         if cat in monthly.index:

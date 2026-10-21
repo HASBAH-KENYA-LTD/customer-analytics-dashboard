@@ -3,10 +3,9 @@ config.py — constants, colours, style dicts.
 No local imports allowed here.
 """
 
-MONTHS = [
-    "January 2026", "February 2026", "March 2026", "April 2026",
-]
-MONTH_SHORT = ["Jan 26", "Feb 26", "Mar 26", "Apr 26"]
+# Filled in place by data.py from the data source ("January 2026" / "Jan 26")
+MONTHS: list = []
+MONTH_SHORT: list = []
 TOTAL_COL   = "Grand Total"
 
 CAT_COLORS = {"HFS": "#2980B9", "SUBD": "#E67E22"}

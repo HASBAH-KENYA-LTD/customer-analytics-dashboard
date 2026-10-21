@@ -2,9 +2,13 @@
 data.py — data loading (df, WARDS, CONSTITUENCIES, BOROUGHS, options).
 All admin geography derived from shapefiles via spatial join.
 
+HASBAH customer sales come from SQL Server (DATA_SOURCE=mssql, query in
+sql/hasbah_sales.sql) or the Excel export (DATA_SOURCE=excel, default).
+
 Results are pickled after the first run. Subsequent restarts load in
 under 5 s instead of 60-90 s. Cache is invalidated when any source
-file is newer than the cache.
+file is newer than the cache, or — for mssql — when it is older than
+CACHE_TTL_HOURS. If SQL Server is unreachable, the stale cache is used.
 """
 
 import warnings
@@ -14,35 +18,146 @@ import time
 import logging
 import pandas as pd
 import geopandas as gpd
+from dotenv import load_dotenv
 warnings.filterwarnings("ignore", message="Geometry is in a geographic CRS")
 
 _log = logging.getLogger("shptest.app")
 
 from config import (
-    MONTHS, TOTAL_COL, REP_CAT_PALETTE, REP_CAT_COLORS,
+    MONTHS, MONTH_SHORT, TOTAL_COL, REP_CAT_PALETTE, REP_CAT_COLORS,
 )
 
-_CACHE_PATH = ".cache_data.pkl"
+load_dotenv()
+DATA_SOURCE     = os.getenv("DATA_SOURCE", "excel").strip().lower()
+CACHE_TTL_HOURS = float(os.getenv("CACHE_TTL_HOURS", "20"))
+MONTHS_BACK     = int(os.getenv("MONTHS_BACK", "4"))
+
+_EXCEL_PATH = "HASBAH_CUSTOMERS_SUBD_VANS.xlsx"
+_SQL_PATH   = "sql/hasbah_sales.sql"
+_CACHE_PATH = f".cache_data_{DATA_SOURCE}.pkl"
 _SOURCES = [
-    "HASBAH_CUSTOMERS_SUBD_VANS.xlsx",
+    _EXCEL_PATH if DATA_SOURCE == "excel" else _SQL_PATH,
     "COKE_CUSTOMERS.xlsx",
     "Kenya_Wards/kenya_wards.shp",
     "ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp",
     "Boroughs/boroughs and branches.shp",
 ]
+_CUST_RENAME = {
+    "CUSTOMER_ID":    "customer_id",
+    "CUSTOMER_ID_PK": "customer_id_PK",
+    "CUSTOMER_NAME":  "customer_name",
+    "CATEGORY":       "category",
+    "REP_CATEGORY":   "rep_category",
+    "SALES_REP":      "sales_rep",
+}
+# category -> months with no sales data for it (blank, not zero; charts gap)
+NO_DATA_MONTHS: dict = {}
+_CUST_ATTRS = ["customer_id", "customer_id_PK", "customer_name", "category",
+               "rep_category", "sales_rep", "REGION_NAME", "LAT", "LONG"]
 
 
 def _cache_stale():
     if not os.path.exists(_CACHE_PATH):
         return True
     cache_t = os.path.getmtime(_CACHE_PATH)
+    if DATA_SOURCE == "mssql" and time.time() - cache_t > CACHE_TTL_HOURS * 3600:
+        return True
     return any(
         os.path.exists(s) and os.path.getmtime(s) > cache_t
         for s in _SOURCES
     )
 
 
-if not _cache_stale():
+def _set_months(month_starts):
+    """Fill config.MONTHS / MONTH_SHORT in place so every importer sees them."""
+    MONTHS[:]      = [m.strftime("%B %Y") for m in month_starts]
+    MONTH_SHORT[:] = [m.strftime("%b %y") for m in month_starts]
+
+
+def _read_excel():
+    """Excel export with month headers renamed to "January 2026" strings.
+    Returns (frame, sorted month datetimes)."""
+    import datetime as _dt
+    raw = pd.read_excel(_EXCEL_PATH, sheet_name="COMBINED").rename(columns=_CUST_RENAME)
+    # Month headers arrive as datetime.datetime objects from Excel
+    month_cols = sorted(c for c in raw.columns if isinstance(c, _dt.datetime))
+    return raw.rename(columns={c: c.strftime("%B %Y") for c in month_cols}), month_cols
+
+
+def _load_customers_excel():
+    """Wide customer frame from the Excel export (one column per month)."""
+    raw, month_cols = _read_excel()
+    _set_months(month_cols[-MONTHS_BACK:])
+    keep = _CUST_ATTRS + MONTHS + [TOTAL_COL]
+    return raw[[c for c in keep if c in raw.columns]].copy()
+
+
+def _load_customers_mssql():
+    """Wide customer frame, last MONTHS_BACK full months.
+    HFS (vans/bikes) from SQL Server; SUBD from the Excel export, because
+    wh.FACT_VAN_SALES carries no distributor sales."""
+    from sqlalchemy import text
+    from db import get_engine
+
+    this_month = pd.Timestamp.today().normalize().replace(day=1)
+    month_starts = pd.date_range(end=this_month - pd.DateOffset(months=1),
+                                 periods=MONTHS_BACK, freq="MS")
+    with open(_SQL_PATH) as f:
+        sql = f.read()
+    with get_engine().connect() as conn:
+        long = pd.read_sql(text(sql), conn, params={"start": month_starts[0].date()})
+    _log.info("MSSQL returned %d customer-month rows", len(long))
+
+    long["month_start"] = pd.to_datetime(long["month_start"])
+    long["sales"] = pd.to_numeric(long["sales"], errors="coerce").fillna(0)
+    # Drop the current (partial) month; NaT rows are customers with no sales
+    # in the window and are kept so they still appear with zeros.
+    long = long[long["month_start"].isna() | long["month_start"].isin(month_starts)]
+
+    cust = long[_CUST_ATTRS].drop_duplicates("customer_id_PK").set_index("customer_id_PK")
+    wide = (
+        long.dropna(subset=["month_start"])
+        .pivot_table(index="customer_id_PK", columns="month_start",
+                     values="sales", aggfunc="sum", fill_value=0)
+        .reindex(columns=month_starts, fill_value=0)
+    )
+    _set_months(month_starts)
+    wide.columns = MONTHS
+    hfs = cust.join(wide, how="left").fillna({m: 0 for m in MONTHS}).reset_index()
+
+    # SUBD rows: months the Excel export doesn't cover are "no data", not zero.
+    raw, xl_months = _read_excel()
+    subd = raw[raw["category"] == "SUBD"].reindex(columns=_CUST_ATTRS + MONTHS)
+    NO_DATA_MONTHS["SUBD"] = [m for m in MONTHS
+                              if m not in {x.strftime("%B %Y") for x in xl_months}]
+    if NO_DATA_MONTHS["SUBD"]:
+        _log.warning("SUBD sales not available for %s (Excel covers %s – %s)",
+                     ", ".join(NO_DATA_MONTHS["SUBD"]),
+                     xl_months[0].strftime("%b %Y"), xl_months[-1].strftime("%b %Y"))
+
+    out = pd.concat([hfs, subd], ignore_index=True)
+    out[TOTAL_COL] = out[MONTHS].sum(axis=1)
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CUSTOMER DATA — fetched before the cache decision so a DB outage can fall
+# back to the stale cache instead of crashing the service.
+# ─────────────────────────────────────────────────────────────────────────────
+_use_cache = not _cache_stale()
+if not _use_cache:
+    _t0 = time.perf_counter()
+    _log.info("Data cache MISS — loading customers from %s", DATA_SOURCE)
+    try:
+        df = _load_customers_mssql() if DATA_SOURCE == "mssql" else _load_customers_excel()
+    except Exception:
+        if not os.path.exists(_CACHE_PATH):
+            raise
+        _log.exception("Customer load from %s failed — using stale cache %s",
+                       DATA_SOURCE, _CACHE_PATH)
+        _use_cache = True
+
+if _use_cache:
     _t0 = time.perf_counter()
     _log.info("Data cache HIT — loading %s", _CACHE_PATH)
     with open(_CACHE_PATH, "rb") as _f:
@@ -69,43 +184,18 @@ if not _cache_stale():
     COKE_SEGMENTS    = _c["COKE_SEGMENTS"]
     COKE_REGIONS     = _c["COKE_REGIONS"]
     REP_CAT_COLORS.update(_c["REP_CAT_COLORS"])
+    MONTHS[:]      = _c["MONTHS"]
+    MONTH_SHORT[:] = _c["MONTH_SHORT"]
+    NO_DATA_MONTHS.update(_c.get("NO_DATA_MONTHS", {}))
     del _c
     _log.info("Data loaded from cache in %.2f s", time.perf_counter() - _t0)
 
 else:
-    # ─────────────────────────────────────────────────────────────────────────
-    # CUSTOMER DATA
-    # ─────────────────────────────────────────────────────────────────────────
-    _t0 = time.perf_counter()
-    _log.info("Data cache MISS — full processing started")
-    _log.info("Loading customer Excel…")
-    _raw = pd.read_excel("HASBAH_CUSTOMERS_SUBD_VANS.xlsx", sheet_name="COMBINED")
-
-    # Normalise column names to match the rest of the codebase
-    _raw = _raw.rename(columns={
-        "CUSTOMER_ID":    "customer_id",
-        "CUSTOMER_ID_PK": "customer_id_PK",
-        "CUSTOMER_NAME":  "customer_name",
-        "CATEGORY":       "category",
-        "REP_CATEGORY":   "rep_category",
-        "SALES_REP":      "sales_rep",
-    })
-    # Month headers arrive as datetime.datetime objects from Excel — convert to "January 2026" strings
-    import datetime as _dt
-    _raw = _raw.rename(columns={
-        c: c.strftime("%B %Y")
-        for c in _raw.columns if isinstance(c, _dt.datetime)
-    })
-
-    _keep = ["customer_id", "customer_id_PK", "customer_name",
-             "category", "rep_category", "sales_rep", "REGION_NAME",
-             "LAT", "LONG"] + MONTHS + [TOTAL_COL]
-    df = _raw[[c for c in _keep if c in _raw.columns]].copy()
-    del _raw
-
     df[TOTAL_COL] = pd.to_numeric(df[TOTAL_COL], errors="coerce").fillna(0)
     for m in MONTHS:
         df[m] = pd.to_numeric(df[m], errors="coerce").fillna(0)
+    for _cat, _ms in NO_DATA_MONTHS.items():
+        df.loc[df["category"] == _cat, _ms] = float("nan")
     df["rep_category"] = df["rep_category"].where(
         df["rep_category"].isna(),
         df["rep_category"].astype(str).str.strip(),
@@ -352,6 +442,9 @@ else:
             "ALL_REP_CATS":     ALL_REP_CATS,
             "REP_CAT_OPTIONS":  REP_CAT_OPTIONS,
             "REP_CAT_COLORS":   dict(REP_CAT_COLORS),
+            "MONTHS":           list(MONTHS),
+            "MONTH_SHORT":      list(MONTH_SHORT),
+            "NO_DATA_MONTHS":   dict(NO_DATA_MONTHS),
             "df_coke":          df_coke,
             "COKE_SEGMENTS":    COKE_SEGMENTS,
             "COKE_REGIONS":     COKE_REGIONS,
